@@ -82,16 +82,25 @@ jobs:
 
           if [ -n "$RECORD_ID" ]; then
             echo "Updating existing CNAME $RECORD_ID -> $CF_HOST"
-            curl -sf -X PUT \
+            RESPONSE=$(curl -s -X PUT \
               "https://api.cloudflare.com/client/v4/zones/$CF_ZONE/dns_records/$RECORD_ID" \
               -H "Authorization: Bearer $CF_TOKEN" \
               -H "Content-Type: application/json" \
-              -d "$PAYLOAD"
+              -d "$PAYLOAD")
           else
             echo "Creating new CNAME auth.eduxal.com -> $CF_HOST"
-            curl -sf -X POST \
+            RESPONSE=$(curl -s -X POST \
               "https://api.cloudflare.com/client/v4/zones/$CF_ZONE/dns_records" \
               -H "Authorization: Bearer $CF_TOKEN" \
               -H "Content-Type: application/json" \
-              -d "$PAYLOAD"
+              -d "$PAYLOAD")
+          fi
+
+          echo "Cloudflare response: $RESPONSE"
+
+          SUCCESS=$(echo "$RESPONSE" | jq -r ".success")
+          if [ "$SUCCESS" != "true" ]; then
+            echo "Cloudflare API call failed:"
+            echo "$RESPONSE" | jq ".errors"
+            exit 1
           fi

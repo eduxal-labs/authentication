@@ -1,3 +1,5 @@
-fn main() {
+#[tokio::main]
+async fn main() -> std::io::Result<()> {
     println!("Hello, world!");
+    Ok(())
 }

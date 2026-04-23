@@ -58,7 +58,7 @@ Resources:
     Properties:
       RoleName: !Sub "eduxal-github-deploy-${GitHubRepo}"
       Description: !Sub "Assumed by GitHub Actions for ${GitHubOrg}/${GitHubRepo} (${DeployBranch})"
-      MaxSessionDuration: 3600  # 1 hour — enough for any SAM deploy
+      MaxSessionDuration: 3600 # 1 hour — enough for any SAM deploy
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -74,8 +74,7 @@ Resources:
               StringLike:
                 # Only the exact repo + branch can assume this role.
                 # A fork, a PR from a fork, or any other branch cannot.
-                "token.actions.githubusercontent.com:sub":
-                  !Sub "repo:${GitHubOrg}/${GitHubRepo}:ref:refs/heads/${DeployBranch}"
+                "token.actions.githubusercontent.com:sub": !Sub "repo:${GitHubOrg}/${GitHubRepo}:ref:refs/heads/${DeployBranch}"
 
   # ──────────────────────────────────────────────────────────────────────────
   # Permissions — scoped tightly to what SAM needs for this one service
@@ -89,7 +88,6 @@ Resources:
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
-
           # SAM uses CloudFormation to create and update the stack
           - Sid: CloudFormation
             Effect: Allow
@@ -109,6 +107,8 @@ Resources:
               - !Sub "arn:aws:cloudformation:*:${AWS::AccountId}:stack/eduxal-${GitHubRepo}/*"
               # SAM also creates a managed changeset
               - !Sub "arn:aws:cloudformation:*:${AWS::AccountId}:stack/eduxal-${GitHubRepo}-*/*"
+              # SAM managed default stack (holds the S3 artifact bucket)
+              - !Sub "arn:aws:cloudformation:*:${AWS::AccountId}:stack/aws-sam-cli-managed-default/*"
               - !Sub "arn:aws:cloudformation:*::transform/AWS-Serverless-*"
 
           # SAM needs the Serverless transform to be available
@@ -121,6 +121,7 @@ Resources:
               - cloudformation:DeleteChangeSet
             Resource:
               - !Sub "arn:aws:cloudformation:*:${AWS::AccountId}:stack/eduxal-${GitHubRepo}/*"
+              - !Sub "arn:aws:cloudformation:*:${AWS::AccountId}:stack/aws-sam-cli-managed-default/*"
               - "arn:aws:cloudformation:*:aws:transform/Serverless-2016-10-31"
 
           # SAM uploads the compiled binary to S3 before deploying

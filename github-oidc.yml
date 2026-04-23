@@ -1,0 +1,218 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  GitHub Actions OIDC provider and scoped deploy role for one repository.
+  Deploy this once per repo (or once per AWS account for the provider).
+  The role ARN in the Outputs section is the value to store as
+  AWS_DEPLOY_ROLE_ARN in GitHub Actions secrets.
+
+Parameters:
+  GitHubOrg:
+    Type: String
+    Description: GitHub organisation or username (e.g. my-org)
+
+  GitHubRepo:
+    Type: String
+    Description: Repository name without the org prefix (e.g. authentication)
+
+  DeployBranch:
+    Type: String
+    Default: main
+    Description: >
+      The branch that is allowed to assume this role.
+      Only pushes to this branch will be able to deploy.
+
+  # Set to "true" if you have already created the GitHub OIDC provider in this
+  # AWS account from a previous stack. Creating it twice causes an error.
+  OIDCProviderAlreadyExists:
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+
+Conditions:
+  CreateOIDCProvider: !Equals [!Ref OIDCProviderAlreadyExists, "false"]
+
+Resources:
+  # ──────────────────────────────────────────────────────────────────────────
+  # GitHub OIDC Identity Provider  (one per AWS account, not one per repo)
+  # ──────────────────────────────────────────────────────────────────────────
+  GitHubOIDCProvider:
+    Type: AWS::IAM::OIDCProvider
+    Condition: CreateOIDCProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList:
+        - sts.amazonaws.com
+      # AWS automatically manages thumbprint rotation for this well-known
+      # provider, but the property is still required by CloudFormation.
+      ThumbprintList:
+        - 6938fd4d98bab03faadb97b34396831e3780aea1
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # IAM Role — assumed by GitHub Actions via OIDC
+  # Locked to: one repo, one branch, one audience.
+  # ──────────────────────────────────────────────────────────────────────────
+  GitHubDeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "eduxal-github-deploy-${GitHubRepo}"
+      Description: !Sub "Assumed by GitHub Actions for ${GitHubOrg}/${GitHubRepo} (${DeployBranch})"
+      MaxSessionDuration: 3600  # 1 hour — enough for any SAM deploy
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !Sub
+                - "arn:aws:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com"
+                - {}
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                "token.actions.githubusercontent.com:aud": sts.amazonaws.com
+              StringLike:
+                # Only the exact repo + branch can assume this role.
+                # A fork, a PR from a fork, or any other branch cannot.
+                "token.actions.githubusercontent.com:sub":
+                  !Sub "repo:${GitHubOrg}/${GitHubRepo}:ref:refs/heads/${DeployBranch}"
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Permissions — scoped tightly to what SAM needs for this one service
+  # ──────────────────────────────────────────────────────────────────────────
+  GitHubDeployPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub "eduxal-github-deploy-${GitHubRepo}-policy"
+      Roles:
+        - !Ref GitHubDeployRole
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+
+          # SAM uses CloudFormation to create and update the stack
+          - Sid: CloudFormation
+            Effect: Allow
+            Action:
+              - cloudformation:CreateStack
+              - cloudformation:UpdateStack
+              - cloudformation:DeleteStack
+              - cloudformation:DescribeStacks
+              - cloudformation:DescribeStackEvents
+              - cloudformation:DescribeStackResource
+              - cloudformation:DescribeStackResources
+              - cloudformation:GetTemplate
+              - cloudformation:GetTemplateSummary
+              - cloudformation:ListStackResources
+              - cloudformation:ValidateTemplate
+            Resource:
+              - !Sub "arn:aws:cloudformation:*:${AWS::AccountId}:stack/eduxal-${GitHubRepo}/*"
+              # SAM also creates a managed changeset
+              - !Sub "arn:aws:cloudformation:*:${AWS::AccountId}:stack/eduxal-${GitHubRepo}-*/*"
+              - !Sub "arn:aws:cloudformation:*::transform/AWS-Serverless-*"
+
+          # SAM needs the Serverless transform to be available
+          - Sid: CloudFormationTransform
+            Effect: Allow
+            Action:
+              - cloudformation:CreateChangeSet
+              - cloudformation:DescribeChangeSet
+              - cloudformation:ExecuteChangeSet
+              - cloudformation:DeleteChangeSet
+            Resource:
+              - !Sub "arn:aws:cloudformation:*:${AWS::AccountId}:stack/eduxal-${GitHubRepo}/*"
+              - "arn:aws:cloudformation:*:aws:transform/Serverless-2016-10-31"
+
+          # SAM uploads the compiled binary to S3 before deploying
+          - Sid: SAMArtifactsBucket
+            Effect: Allow
+            Action:
+              - s3:CreateBucket
+              - s3:GetBucketLocation
+              - s3:ListBucket
+              - s3:PutObject
+              - s3:GetObject
+              - s3:DeleteObject
+            Resource:
+              # SAM creates its own managed bucket with this prefix
+              - "arn:aws:s3:::aws-sam-cli-managed-*"
+              - "arn:aws:s3:::aws-sam-cli-managed-*/*"
+
+          # Create and update the Lambda function
+          - Sid: Lambda
+            Effect: Allow
+            Action:
+              - lambda:CreateFunction
+              - lambda:DeleteFunction
+              - lambda:GetFunction
+              - lambda:GetFunctionConfiguration
+              - lambda:UpdateFunctionCode
+              - lambda:UpdateFunctionConfiguration
+              - lambda:AddPermission
+              - lambda:RemovePermission
+              - lambda:ListTags
+              - lambda:TagResource
+              - lambda:UntagResource
+              - lambda:GetPolicy
+              - lambda:CreateFunctionUrlConfig
+              - lambda:UpdateFunctionUrlConfig
+              - lambda:GetFunctionUrlConfig
+              - lambda:DeleteFunctionUrlConfig
+            Resource:
+              - !Sub "arn:aws:lambda:*:${AWS::AccountId}:function:eduxal-${GitHubRepo}"
+
+          # SAM creates an execution role for the Lambda function
+          - Sid: IAM
+            Effect: Allow
+            Action:
+              - iam:CreateRole
+              - iam:DeleteRole
+              - iam:GetRole
+              - iam:PassRole
+              - iam:AttachRolePolicy
+              - iam:DetachRolePolicy
+              - iam:PutRolePolicy
+              - iam:DeleteRolePolicy
+              - iam:GetRolePolicy
+              - iam:TagRole
+              - iam:UntagRole
+              - iam:ListRolePolicies
+              - iam:ListAttachedRolePolicies
+            Resource:
+              - !Sub "arn:aws:iam::${AWS::AccountId}:role/eduxal-${GitHubRepo}-*"
+
+          # Create the DynamoDB tables owned by this service
+          - Sid: DynamoDB
+            Effect: Allow
+            Action:
+              - dynamodb:CreateTable
+              - dynamodb:DeleteTable
+              - dynamodb:DescribeTable
+              - dynamodb:UpdateTable
+              - dynamodb:UpdateTimeToLive
+              - dynamodb:DescribeTimeToLive
+              - dynamodb:ListTagsOfResource
+              - dynamodb:TagResource
+              - dynamodb:UntagResource
+            Resource:
+              - !Sub "arn:aws:dynamodb:*:${AWS::AccountId}:table/eduxal-*"
+
+          # Read CloudFormation exports from the infrastructure stack
+          # (needed to resolve !ImportValue during sam validate / describe)
+          - Sid: ReadInfraExports
+            Effect: Allow
+            Action:
+              - cloudformation:ListExports
+            Resource: "*"
+
+Outputs:
+  RoleArn:
+    Description: >
+      Copy this value and save it as the AWS_DEPLOY_ROLE_ARN secret in
+      your GitHub repository (Settings → Secrets and variables → Actions).
+    Value: !GetAtt GitHubDeployRole.Arn
+
+  OIDCProviderArn:
+    Description: GitHub OIDC provider ARN (reuse this value for other repos)
+    Condition: CreateOIDCProvider
+    Value: !Ref GitHubOIDCProvider

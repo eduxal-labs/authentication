@@ -1,0 +1,96 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Setup cargo-lambda
+        uses: cargo-lambda/setup-cargo-lambda@v1
+
+      # Requires a GitHub OIDC provider and IAM role configured in AWS.
+      # Store the role ARN as AWS_DEPLOY_ROLE_ARN in GitHub secrets.
+      # See: https://docs.github.com/en/actions/security-for-github-actions/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Setup SAM CLI
+        uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+
+      # sam build invokes cargo-lambda internally via BuildMethod: rust-cargolambda
+      - name: Build
+        run: sam build
+
+      - name: Deploy
+        run: sam deploy
+
+      # Lambda Function URLs are stable — they only change if the function is
+      # deleted and recreated. We still upsert on every deploy so that a
+      # brand-new stack gets its DNS record automatically.
+      - name: Get Function URL
+        id: fn
+        run: |
+          URL=$(aws cloudformation describe-stacks \
+            --stack-name eduxal-authentication \
+            --query "Stacks[0].Outputs[?OutputKey=='AuthFunctionUrlEndpoint'].OutputValue" \
+            --output text)
+          # Strip https:// and trailing slash — Cloudflare needs a bare hostname
+          HOST=$(echo "$URL" | sed 's|https://||;s|/$||')
+          echo "host=$HOST" >> $GITHUB_OUTPUT
+
+      # Cloudflare proxied=true means Cloudflare terminates TLS for
+      # auth.eduxal.com and forwards to the Lambda URL — this is required
+      # because the Lambda cert is only valid for *.lambda-url.<region>.on.aws
+      - name: Upsert Cloudflare CNAME record
+        env:
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ZONE: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+          CF_HOST: ${{ steps.fn.outputs.host }}
+        run: |
+          RECORD_ID=$(curl -sf \
+            "https://api.cloudflare.com/client/v4/zones/$CF_ZONE/dns_records?type=CNAME&name=auth.eduxal.com" \
+            -H "Authorization: Bearer $CF_TOKEN" | jq -r ".result[0].id // empty")
+
+          PAYLOAD=$(jq -n \
+            --arg host "$CF_HOST" \
+            '{"type": "CNAME", "name": "auth", "content": $host, "proxied": true, "ttl": 1}')
+
+          if [ -n "$RECORD_ID" ]; then
+            echo "Updating existing CNAME $RECORD_ID -> $CF_HOST"
+            curl -sf -X PUT \
+              "https://api.cloudflare.com/client/v4/zones/$CF_ZONE/dns_records/$RECORD_ID" \
+              -H "Authorization: Bearer $CF_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d "$PAYLOAD"
+          else
+            echo "Creating new CNAME auth.eduxal.com -> $CF_HOST"
+            curl -sf -X POST \
+              "https://api.cloudflare.com/client/v4/zones/$CF_ZONE/dns_records" \
+              -H "Authorization: Bearer $CF_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d "$PAYLOAD"
+          fi

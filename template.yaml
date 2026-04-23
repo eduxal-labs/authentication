@@ -1,0 +1,96 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Eduxal - Authentication Service
+
+Resources:
+  # ──────────────────────────────────────────────
+  # Verifications Table (owned by this service)
+  # ──────────────────────────────────────────────
+  VerificationsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: eduxal-Verifications
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: expiresAt
+        Enabled: true
+
+  # ──────────────────────────────────────────────
+  # Authentication Lambda
+  # ──────────────────────────────────────────────
+  AuthFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: rust-cargolambda
+      BuildProperties:
+        Binary: authentication
+    Properties:
+      FunctionName: eduxal-authentication
+      CodeUri: ./
+      Handler: bootstrap
+      Runtime: provided.al2023
+      Architectures:
+        - arm64
+      Timeout: 29
+      MemorySize: 256
+      Tracing: Active
+      Environment:
+        Variables:
+          USERS_TABLE: !ImportValue eduxal-UsersTableName
+          VERIFICATIONS_TABLE: !Ref VerificationsTable
+          RUST_LOG: info
+
+      # ── Public Function URL (no API Gateway) ──────────────────────────────
+      FunctionUrlConfig:
+        AuthType: NONE
+        Cors:
+          AllowOrigins:
+            # Update this to http://localhost:PORT for local dev if needed
+            - "https://eduxal.com"
+          AllowMethods:
+            - GET
+            - POST
+            - OPTIONS
+          AllowHeaders:
+            - Content-Type
+            - Authorization
+          MaxAge: 86400
+
+      # ── IAM – least-privilege on Users table; full access on Verifications ─
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:GetItem
+                - dynamodb:PutItem
+                - dynamodb:UpdateItem
+                - dynamodb:Query
+                - dynamodb:BatchGetItem
+              Resource:
+                - !Sub
+                  - "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${TableName}"
+                  - TableName: !ImportValue eduxal-UsersTableName
+                - !Sub
+                  - "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${TableName}/index/*"
+                  - TableName: !ImportValue eduxal-UsersTableName
+        - DynamoDBCrudPolicy:
+            TableName: !Ref VerificationsTable
+
+Outputs:
+  AuthFunctionArn:
+    Description: Authentication Lambda ARN
+    Value: !GetAtt AuthFunction.Arn
+    Export:
+      Name: eduxal-AuthFunctionArn
+
+  AuthFunctionUrlEndpoint:
+    Description: Authentication Lambda Function URL
+    Value: !GetAtt AuthFunctionUrl.FunctionUrl
+    Export:
+      Name: eduxal-AuthFunctionUrlEndpoint

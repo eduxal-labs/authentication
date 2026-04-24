@@ -2,70 +2,11 @@ AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: Eduxal - Authentication Service
 
-Parameters:
-  AcmCertificateArn:
-    Type: String
-    Description: ACM certificate ARN for auth.eduxal.com (must be in us-east-1)
-
 Resources:
-  # ──────────────────────────────────────────────
-  # Verifications Table (owned by this service)
-  # ──────────────────────────────────────────────
-  VerificationsTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      TableName: eduxal-Verifications
-      BillingMode: PAY_PER_REQUEST
-      AttributeDefinitions:
-        - AttributeName: pk
-          AttributeType: S
-      KeySchema:
-        - AttributeName: pk
-          KeyType: HASH
-      TimeToLiveSpecification:
-        AttributeName: expiresAt
-        Enabled: true
-
-  # ──────────────────────────────────────────────
-  # HTTP API
-  # ──────────────────────────────────────────────
-  AuthApi:
-    Type: AWS::Serverless::HttpApi
-    Properties:
-      StageName: $default
-      CorsConfiguration:
-        AllowOrigins:
-          - "https://eduxal.com"
-        AllowHeaders:
-          - Content-Type
-          - Authorization
-        AllowMethods:
-          - GET
-          - POST
-          - OPTIONS
-
-  # ──────────────────────────────────────────────
-  # Custom Domain
-  # ──────────────────────────────────────────────
-  AuthApiDomain:
-    Type: AWS::ApiGatewayV2::DomainName
-    Properties:
-      DomainName: auth.eduxal.com
-      DomainNameConfigurations:
-        - CertificateArn: !Ref AcmCertificateArn
-          EndpointType: REGIONAL
-
-  AuthApiMapping:
-    Type: AWS::ApiGatewayV2::ApiMapping
-    Properties:
-      DomainName: !Ref AuthApiDomain
-      ApiId: !Ref AuthApi
-      Stage: $default
-
   # ──────────────────────────────────────────────
   # Authentication Lambda
   # ──────────────────────────────────────────────
-  AuthenticationFunction:
+  AuthFunction:
     Type: AWS::Serverless::Function
     Metadata:
       BuildMethod: rust-cargolambda
@@ -84,54 +25,45 @@ Resources:
       Environment:
         Variables:
           USERS_TABLE: !ImportValue eduxal-UsersTableName
-          VERIFICATIONS_TABLE: !Ref VerificationsTable
+          VERIFICATIONS_TABLE: !ImportValue eduxal-VerificationsTableName
+          SESSIONS_TABLE: !ImportValue eduxal-SessionsTableName
           RUST_LOG: info
-      Events:
-        ApiProxy:
-          Type: HttpApi
-          Properties:
-            ApiId: !Ref AuthApi
-            Path: /{proxy+}
-            Method: ANY
-        ApiRoot:
-          Type: HttpApi
-          Properties:
-            ApiId: !Ref AuthApi
-            Path: /
-            Method: ANY
 
-      # ── IAM – least-privilege on Users table; full access on Verifications ─
+      # ── Public Function URL (no API Gateway) ──────────────────────────────
+      FunctionUrlConfig:
+        AuthType: NONE
+        Cors:
+          AllowOrigins:
+            - "*"
+          AllowMethods:
+            - GET
+            - POST
+            - PUT
+            - DELETE
+            - OPTIONS
+          AllowHeaders:
+            - Content-Type
+            - Authorization
+          MaxAge: 86400
+
+      # ── IAM – read/write on all three tables (index access included) ──────
       Policies:
-        - Statement:
-            - Effect: Allow
-              Action:
-                - dynamodb:GetItem
-                - dynamodb:PutItem
-                - dynamodb:UpdateItem
-                - dynamodb:Query
-                - dynamodb:BatchGetItem
-              Resource:
-                - !Sub
-                  - "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${TableName}"
-                  - TableName: !ImportValue eduxal-UsersTableName
-                - !Sub
-                  - "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${TableName}/index/*"
-                  - TableName: !ImportValue eduxal-UsersTableName
         - DynamoDBCrudPolicy:
-            TableName: !Ref VerificationsTable
+            TableName: !ImportValue eduxal-UsersTableName
+        - DynamoDBCrudPolicy:
+            TableName: !ImportValue eduxal-VerificationsTableName
+        - DynamoDBCrudPolicy:
+            TableName: !ImportValue eduxal-SessionsTableName
 
 Outputs:
   AuthFunctionArn:
     Description: Authentication Lambda ARN
-    Value: !GetAtt AuthenticationFunction.Arn
+    Value: !GetAtt AuthFunction.Arn
     Export:
       Name: eduxal-AuthFunctionArn
 
-  AuthApiDomainName:
-    Description: >
-      API Gateway regional domain name.
-      Set this as the Cloudflare CNAME target for auth.eduxal.com.
-      Unlike the Lambda Function URL this value never changes between deployments.
-    Value: !GetAtt AuthApiDomain.RegionalDomainName
+  AuthFunctionUrl:
+    Description: Authentication Lambda Function URL
+    Value: !GetAtt AuthFunctionUrl.FunctionUrl
     Export:
-      Name: eduxal-AuthApiDomainName
+      Name: eduxal-AuthFunctionUrl

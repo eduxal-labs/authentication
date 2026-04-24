@@ -13,11 +13,14 @@ parallel = true
 lint = true
 
 [default.deploy.parameters]
-capabilities            = "CAPABILITY_IAM"
+capabilities            = "CAPABILITY_IAM CAPABILITY_AUTO_EXPAND"
 confirm_changeset       = false
 resolve_s3              = true
 s3_prefix               = "eduxal-authentication"
 fail_on_empty_changeset = false
+# Replace the value below with your ACM certificate ARN after running:
+# aws acm request-certificate --domain-name auth.eduxal.com --validation-method DNS --region us-east-1
+parameter_overrides     = "AcmCertificateArn=REPLACE_WITH_ACM_CERTIFICATE_ARN"
 
 [default.sync.parameters]
 watch = true

@@ -2,6 +2,11 @@ AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: Eduxal - Authentication Service
 
+Parameters:
+  AcmCertificateArn:
+    Type: String
+    Description: ACM certificate ARN for auth.eduxal.com (must be in us-east-1)
+
 Resources:
   # ──────────────────────────────────────────────
   # Verifications Table (owned by this service)
@@ -20,6 +25,42 @@ Resources:
       TimeToLiveSpecification:
         AttributeName: expiresAt
         Enabled: true
+
+  # ──────────────────────────────────────────────
+  # HTTP API
+  # ──────────────────────────────────────────────
+  AuthApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: $default
+      CorsConfiguration:
+        AllowOrigins:
+          - "https://eduxal.com"
+        AllowHeaders:
+          - Content-Type
+          - Authorization
+        AllowMethods:
+          - GET
+          - POST
+          - OPTIONS
+
+  # ──────────────────────────────────────────────
+  # Custom Domain
+  # ──────────────────────────────────────────────
+  AuthApiDomain:
+    Type: AWS::ApiGatewayV2::DomainName
+    Properties:
+      DomainName: auth.eduxal.com
+      DomainNameConfigurations:
+        - CertificateArn: !Ref AcmCertificateArn
+          EndpointType: REGIONAL
+
+  AuthApiMapping:
+    Type: AWS::ApiGatewayV2::ApiMapping
+    Properties:
+      DomainName: !Ref AuthApiDomain
+      ApiId: !Ref AuthApi
+      Stage: $default
 
   # ──────────────────────────────────────────────
   # Authentication Lambda
@@ -45,21 +86,19 @@ Resources:
           USERS_TABLE: !ImportValue eduxal-UsersTableName
           VERIFICATIONS_TABLE: !Ref VerificationsTable
           RUST_LOG: info
-
-      # ── Public Function URL (no API Gateway) ──────────────────────────────
-      FunctionUrlConfig:
-        AuthType: NONE
-        Cors:
-          AllowOrigins:
-            # Update this to http://localhost:PORT for local dev if needed
-            - "https://eduxal.com"
-          AllowMethods:
-            - GET
-            - POST
-          AllowHeaders:
-            - Content-Type
-            - Authorization
-          MaxAge: 86400
+      Events:
+        ApiProxy:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref AuthApi
+            Path: /{proxy+}
+            Method: ANY
+        ApiRoot:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref AuthApi
+            Path: /
+            Method: ANY
 
       # ── IAM – least-privilege on Users table; full access on Verifications ─
       Policies:
@@ -88,8 +127,11 @@ Outputs:
     Export:
       Name: eduxal-AuthFunctionArn
 
-  AuthFunctionUrlEndpoint:
-    Description: Authentication Lambda Function URL
-    Value: !GetAtt AuthenticationFunctionUrl.FunctionUrl
+  AuthApiDomainName:
+    Description: >
+      API Gateway regional domain name.
+      Set this as the Cloudflare CNAME target for auth.eduxal.com.
+      Unlike the Lambda Function URL this value never changes between deployments.
+    Value: !GetAtt AuthApiDomain.RegionalDomainName
     Export:
-      Name: eduxal-AuthFunctionUrlEndpoint
+      Name: eduxal-AuthApiDomainName

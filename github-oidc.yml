@@ -198,6 +198,22 @@ Resources:
             Resource:
               - !Sub "arn:aws:dynamodb:*:${AWS::AccountId}:table/eduxal-*"
 
+          # Create and manage API Gateway HTTP APIs, custom domains, and mappings
+          - Sid: ApiGateway
+            Effect: Allow
+            Action:
+              - apigateway:GET
+              - apigateway:POST
+              - apigateway:PUT
+              - apigateway:DELETE
+              - apigateway:PATCH
+            Resource:
+              - !Sub "arn:aws:apigateway:${AWS::Region}::/apis"
+              - !Sub "arn:aws:apigateway:${AWS::Region}::/apis/*"
+              - !Sub "arn:aws:apigateway:${AWS::Region}::/domainnames"
+              - !Sub "arn:aws:apigateway:${AWS::Region}::/domainnames/*"
+              - !Sub "arn:aws:apigateway:${AWS::Region}::/tags/*"
+
           # Read CloudFormation exports from the infrastructure stack
           # (needed to resolve !ImportValue during sam validate / describe)
           - Sid: ReadInfraExports

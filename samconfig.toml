@@ -20,7 +20,7 @@ s3_prefix               = "eduxal-authentication"
 fail_on_empty_changeset = false
 # Replace the value below with your ACM certificate ARN after running:
 # aws acm request-certificate --domain-name auth.eduxal.com --validation-method DNS --region us-east-1
-parameter_overrides     = "AcmCertificateArn=REPLACE_WITH_ACM_CERTIFICATE_ARN"
+parameter_overrides     = "AcmCertificateArn=arn:aws:acm:us-east-1:908027408434:certificate/b78b510b-bd15-4f30-b723-e3509db29582"
 
 [default.sync.parameters]
 watch = true

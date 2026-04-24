@@ -1,14 +1,17 @@
 use lambda_http::run;
 
+mod config;
+mod db;
 mod routes;
+mod services;
+mod types;
 
 type Result<T, E = Box<dyn std::error::Error + Send + Sync>> = std::result::Result<T, E>;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let config = aws_config::load_from_env().await;
-    let client = aws_sdk_dynamodb::Client::new(&config);
-    let router = routes::router(client);
+    let config = std::sync::Arc::new(config::Config::new().await);
+    let router = routes::router(config);
     run(router).await?;
     Ok(())
 }

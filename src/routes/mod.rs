@@ -4,7 +4,6 @@ use axum::{Router, routing::get};
 pub fn router(client: Client) -> Router {
     Router::new()
         .route("/health", get(health))
-        // future routes go here, before with_state
         .with_state(client)
 }
 

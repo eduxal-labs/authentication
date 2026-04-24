@@ -104,3 +104,26 @@ jobs:
             echo "$RESPONSE" | jq ".errors"
             exit 1
           fi
+
+      - name: Update Worker LAMBDA_HOST secret
+        env:
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CF_HOST: ${{ steps.fn.outputs.host }}
+        run: |
+          RESPONSE=$(curl -s -X PUT \
+            "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/workers/scripts/auth-proxy/secrets" \
+            -H "Authorization: Bearer $CF_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{\"name\": \"LAMBDA_HOST\", \"text\": \"$CF_HOST\", \"type\": \"secret_text\"}")
+
+          echo "Worker secret update response: $RESPONSE"
+
+          SUCCESS=$(echo "$RESPONSE" | jq -r ".success")
+          if [ "$SUCCESS" != "true" ]; then
+            echo "Failed to update Worker secret:"
+            echo "$RESPONSE" | jq ".errors"
+            exit 1
+          fi
+
+          echo "LAMBDA_HOST secret updated -> $CF_HOST"

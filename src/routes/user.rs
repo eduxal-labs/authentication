@@ -29,9 +29,9 @@ struct Verify {
 pub fn router(authenticator: Authenticator) -> Router {
     Router::new()
         .route("/", get(user))
-        .route("rename", patch(rename))
-        .route("chnage-phone", post(change_phone))
-        .route("confirm-change-phone", patch(confirm_change_phone))
+        .route("/rename", patch(rename))
+        .route("/change-phone", post(change_phone))
+        .route("/confirm-change-phone", patch(confirm_change_phone))
         .with_state(authenticator)
 }
 

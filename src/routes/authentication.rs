@@ -14,7 +14,7 @@ pub fn router(authenticator: Authenticator) -> Router {
         .route("/login", post(login))
         .route("/verify", post(verify))
         .route("/setup", post(setup))
-        .route("refresh", get(refresh))
+        .route("/refresh", get(refresh))
         .with_state(authenticator)
 }
 

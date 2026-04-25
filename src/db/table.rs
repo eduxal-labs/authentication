@@ -10,11 +10,14 @@ impl<I: Item> Table<I> for Client {
         index: Option<&str>,
     ) -> Result<Vec<I>, Error> {
         let mut expr = String::new();
+        let mut names = std::collections::HashMap::new();
         for (key, _) in &keys {
-            expr.push_str(*key);
+            let placeholder = format!("#{}", key);
+            expr.push_str(&placeholder);
             expr.push_str("=:");
             expr.push_str(*key);
             expr.push(',');
+            names.insert(placeholder, key.to_string());
         }
         let expr = expr.trim_end_matches(',');
         let operator = |(key, value): (&str, AttributeValue)| {
@@ -29,6 +32,7 @@ impl<I: Item> Table<I> for Client {
         let output = query
             .key_condition_expression(expr)
             .set_expression_attribute_values(values)
+            .set_expression_attribute_names(Some(names))
             .send()
             .await
             .map_err(Error::server)?;

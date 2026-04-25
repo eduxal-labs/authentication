@@ -62,6 +62,7 @@ impl From<User> for Map {
             (String::from("phone"), user.phone.into()),
             (String::from("name"), AttributeValue::S(user.name)),
             (String::from("level"), user.level.into()),
+            (String::from("status"), user.status.into()),
             (String::from("profiled"), profiled),
             (String::from("created"), AttributeValue::N(created)),
         ]
@@ -82,34 +83,27 @@ impl TryFrom<Option<User>> for User {
 impl TryFrom<Map> for User {
     type Error = Error;
     fn try_from(mut map: Map) -> Result<Self, Self::Error> {
-        let id = map.remove("id").ok_or(Error::internal(
-            "expected field id for type User.",
-            map.clone(),
-        ))?;
-        let phone = map.remove("phone").ok_or(Error::internal(
-            "expected field phone for type User.",
-            map.clone(),
-        ))?;
-        let name = map.remove("name").ok_or(Error::internal(
-            "expected field name for type User.",
-            map.clone(),
-        ))?;
-        let level = map.remove("level").ok_or(Error::internal(
-            "expected field level for type User.",
-            map.clone(),
-        ))?;
-        let status = map.remove("status").ok_or(Error::internal(
-            "expected field status for type User.",
-            map.clone(),
-        ))?;
-        let profiled = map.remove("profiled").ok_or(Error::internal(
-            "expected field profiled for type User.",
-            map.clone(),
-        ))?;
-        let created = map.remove("created").ok_or(Error::internal(
-            "expected field created for type User.",
-            map,
-        ))?;
+        let id = map
+            .remove("id")
+            .ok_or_else(|| Error::internal("expected field id for type User.", map.clone()))?;
+        let phone = map
+            .remove("phone")
+            .ok_or_else(|| Error::internal("expected field phone for type User.", map.clone()))?;
+        let name = map
+            .remove("name")
+            .ok_or_else(|| Error::internal("expected field name for type User.", map.clone()))?;
+        let level = map
+            .remove("level")
+            .ok_or_else(|| Error::internal("expected field level for type User.", map.clone()))?;
+        let status = map
+            .remove("status")
+            .ok_or_else(|| Error::internal("expected field status for type User.", map.clone()))?;
+        let profiled = map.remove("profiled").ok_or_else(|| {
+            Error::internal("expected field profiled for type User.", map.clone())
+        })?;
+        let created = map
+            .remove("created")
+            .ok_or_else(|| Error::internal("expected field created for type User.", map.clone()))?;
 
         let id = id.try_into().map_err(Error::server)?;
 
@@ -157,7 +151,7 @@ impl TryFrom<Map> for User {
             }
         };
         let created = DateTime::<Utc>::from_timestamp(created, 0)
-            .ok_or(Error::server("error converting seconds to date-time"))?;
+            .ok_or_else(|| Error::server("error converting seconds to date-time"))?;
         let phone = Phone::new(phone).map_err(Error::server)?;
         Ok(Self {
             id,

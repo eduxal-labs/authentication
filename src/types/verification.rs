@@ -61,22 +61,18 @@ impl TryFrom<Option<Verification>> for Verification {
 impl TryFrom<HashMap<String, AttributeValue>> for Verification {
     type Error = Error;
     fn try_from(mut map: HashMap<String, AttributeValue>) -> Result<Self, Self::Error> {
-        let phone = map.remove("phone").ok_or(Error::internal(
-            "expected field phone for type Verification.",
-            map.clone(),
-        ))?;
-        let code = map.remove("code").ok_or(Error::internal(
-            "expected field code for type Verification.",
-            map.clone(),
-        ))?;
-        let created = map.remove("created").ok_or(Error::internal(
-            "expected field created for type Verification.",
-            map.clone(),
-        ))?;
-        let ttl = map.remove("ttl").ok_or(Error::internal(
-            "expected field ttl for type Verification.",
-            map,
-        ))?;
+        let phone = map.remove("phone").ok_or_else(|| {
+            Error::internal("expected field phone for type Verification.", map.clone())
+        })?;
+        let code = map.remove("code").ok_or_else(|| {
+            Error::internal("expected field code for type Verification.", map.clone())
+        })?;
+        let created = map.remove("created").ok_or_else(|| {
+            Error::internal("expected field created for type Verification.", map.clone())
+        })?;
+        let ttl = map.remove("ttl").ok_or_else(|| {
+            Error::internal("expected field ttl for type Verification.", map.clone())
+        })?;
 
         let phone = match phone {
             AttributeValue::S(phone) => phone,
@@ -122,9 +118,9 @@ impl TryFrom<HashMap<String, AttributeValue>> for Verification {
             }
         };
         let created = DateTime::<Utc>::from_timestamp(created, 0)
-            .ok_or(Error::server("error converting seconds to date-time"))?;
+            .ok_or_else(|| Error::server("error converting seconds to date-time"))?;
         let ttl = DateTime::<Utc>::from_timestamp(ttl, 0)
-            .ok_or(Error::server("error converting seconds to date-time"))?;
+            .ok_or_else(|| Error::server("error converting seconds to date-time"))?;
         let phone = Phone::new(phone).map_err(Error::server)?;
         Ok(Self {
             phone,

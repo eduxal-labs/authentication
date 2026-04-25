@@ -78,29 +78,24 @@ impl TryFrom<Option<Session>> for Session {
 impl TryFrom<Map> for Session {
     type Error = Error;
     fn try_from(mut map: Map) -> Result<Self, Self::Error> {
-        let id = map.remove("id").ok_or(Error::internal(
-            "expected field id for type Session.",
-            map.clone(),
-        ))?;
-        let user = map.remove("user").ok_or(Error::internal(
-            "expected field user for type Session.",
-            map.clone(),
-        ))?;
-        let refresh = map.remove("refresh").ok_or(Error::internal(
-            "expected field refresh for type Session.",
-            map.clone(),
-        ))?;
-        let device = map.remove("device").ok_or(Error::internal(
-            "expected field device for type Session.",
-            map.clone(),
-        ))?;
-        let created = map.remove("created").ok_or(Error::internal(
-            "expected field created for type Session.",
-            map.clone(),
-        ))?;
+        let id = map
+            .remove("id")
+            .ok_or_else(|| Error::internal("expected field id for type Session.", map.clone()))?;
+        let user = map
+            .remove("user")
+            .ok_or_else(|| Error::internal("expected field user for type Session.", map.clone()))?;
+        let refresh = map.remove("refresh").ok_or_else(|| {
+            Error::internal("expected field refresh for type Session.", map.clone())
+        })?;
+        let device = map.remove("device").ok_or_else(|| {
+            Error::internal("expected field device for type Session.", map.clone())
+        })?;
+        let created = map.remove("created").ok_or_else(|| {
+            Error::internal("expected field created for type Session.", map.clone())
+        })?;
         let ttl = map
             .remove("ttl")
-            .ok_or(Error::internal("expected field ttl for type Session.", map))?;
+            .ok_or_else(|| Error::internal("expected field ttl for type Session.", map))?;
 
         let id = id.try_into().map_err(Error::server)?;
         let user = user.try_into().map_err(Error::server)?;
@@ -141,9 +136,9 @@ impl TryFrom<Map> for Session {
             }
         };
         let created = DateTime::<Utc>::from_timestamp(created, 0)
-            .ok_or(Error::server("error converting seconds to date-time"))?;
+            .ok_or_else(|| Error::server("error converting seconds to date-time"))?;
         let ttl = DateTime::<Utc>::from_timestamp(ttl, 0)
-            .ok_or(Error::server("error converting seconds to date-time"))?;
+            .ok_or_else(|| Error::server("error converting seconds to date-time"))?;
 
         Ok(Self {
             id,

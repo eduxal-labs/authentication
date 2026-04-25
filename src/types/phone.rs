@@ -8,7 +8,7 @@ pub struct Phone(String);
 
 impl Phone {
     pub fn new(phone: String) -> Result<Self, Error> {
-        if !verify_phone_number_with_country_code(&phone) {
+        if !phone.starts_with('+') || !verify_phone_number_with_country_code(&phone) {
             return Err(Error::InvalidPhoneNumber);
         }
         Ok(Self(phone))

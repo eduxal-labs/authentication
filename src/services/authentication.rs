@@ -8,7 +8,7 @@ impl Authentication for Authenticator {
         let db = self.config.db();
         let existing = <Client as Get<Phone, Verification>>::get(db, phone.clone()).await?;
         if let Some(verification) = existing {
-            if Utc::now().timestamp() > (verification.created + Verification::RLTS).timestamp() {
+            if Utc::now().timestamp() < (verification.created + Verification::RLTS).timestamp() {
                 return Err(Error::SlowDown);
             }
         }

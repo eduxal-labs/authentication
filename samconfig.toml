@@ -18,6 +18,7 @@ confirm_changeset       = false
 resolve_s3              = true
 s3_prefix               = "eduxal-authentication"
 fail_on_empty_changeset = false
+parameter_overrides     = "AcmCertificateArn=arn:aws:acm:us-east-1:908027408434:certificate/b78b510b-bd15-4f30-b723-e3509db29582"
 
 [default.sync.parameters]
 watch = true

@@ -52,21 +52,23 @@ jobs:
       - name: Deploy
         run: sam deploy
 
-      # The Lambda Function URL hostname is stable between deployments.
+      # The API Gateway regional domain name is stable — it never changes
       # between deployments, only if the stack is deleted and recreated.
-      # We upsert on every deploy so a brand-new stack gets its DNS record automatically.
+      # We still upsert on every deploy so a brand-new stack gets its
       # DNS record automatically.
-      - name: Get Function URL Hostname
+      - name: Get API Gateway Domain
         id: fn
         run: |
           HOST=$(aws cloudformation describe-stacks \
             --stack-name eduxal-authentication \
-            --query "Stacks[0].Outputs[?OutputKey=='AuthFunctionUrl'].OutputValue" \
-            --output text | sed 's|https://||' | sed 's|/$||')
+            --query "Stacks[0].Outputs[?OutputKey=='AuthApiDomainName'].OutputValue" \
+            --output text)
           echo "host=$HOST" >> $GITHUB_OUTPUT
 
       # Cloudflare proxied=true means Cloudflare terminates TLS for
-      # auth.eduxal.com and forwards to the Lambda Function URL hostname.
+      # auth.eduxal.com and forwards to the API Gateway regional domain.
+      # API Gateway accepts Host: auth.eduxal.com because the custom domain
+      # is configured — no Host header rewriting needed.
       - name: Upsert Cloudflare CNAME record
         env:
           CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

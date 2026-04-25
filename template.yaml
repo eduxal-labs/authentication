@@ -6,7 +6,7 @@ Resources:
   # ──────────────────────────────────────────────
   # Authentication Lambda
   # ──────────────────────────────────────────────
-  AuthFunction:
+  AuthenticationFunction:
     Type: AWS::Serverless::Function
     Metadata:
       BuildMethod: rust-cargolambda
@@ -58,12 +58,12 @@ Resources:
 Outputs:
   AuthFunctionArn:
     Description: Authentication Lambda ARN
-    Value: !GetAtt AuthFunction.Arn
+    Value: !GetAtt AuthenticationFunction.Arn
     Export:
       Name: eduxal-AuthFunctionArn
 
   AuthFunctionUrl:
     Description: Authentication Lambda Function URL
-    Value: !GetAtt AuthFunctionUrl.FunctionUrl
+    Value: !GetAtt AuthenticationFunctionUrl.FunctionUrl
     Export:
       Name: eduxal-AuthFunctionUrl

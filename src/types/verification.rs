@@ -9,22 +9,25 @@ const TTL: i64 = 15;
 
 #[derive(Serialize, Clone)]
 pub struct Verification {
-    phone: Phone,
+    pub phone: Phone,
     #[serde(skip)]
-    code: String,
-    count: u8,
-    ttl: DateTime<Utc>,
+    pub code: String,
+    pub created: DateTime<Utc>,
+    pub ttl: DateTime<Utc>,
 }
 
 impl Verification {
-    pub fn new(phone: Phone, count: u8) -> Self {
+    /// Rate Limit Time in seconds until when a user can try to request another Verification code.
+    pub const RLTS: Duration = Duration::seconds(60);
+    pub fn new(phone: Phone) -> Self {
         let code = rand::random_range::<u32, _>(100000..=999999);
         let code = format!("{:0>6}", code);
-        let ttl = chrono::Utc::now() + Duration::minutes(TTL);
+        let created = Utc::now();
+        let ttl = created + Duration::minutes(TTL);
         Self {
             phone,
             code,
-            count,
+            created,
             ttl,
         }
     }
@@ -33,12 +36,12 @@ impl Verification {
 impl From<Verification> for HashMap<String, AttributeValue> {
     fn from(verification: Verification) -> Self {
         let phone = verification.phone.to_string();
-        let count = verification.count.to_string();
+        let created = verification.created.timestamp().to_string();
         let ttl = verification.ttl.timestamp().to_string();
         [
             (String::from("phone"), AttributeValue::S(phone)),
             (String::from("code"), AttributeValue::S(verification.code)),
-            (String::from("count"), AttributeValue::N(count)),
+            (String::from("created"), AttributeValue::N(created)),
             (String::from("ttl"), AttributeValue::N(ttl)),
         ]
         .into()
@@ -66,8 +69,8 @@ impl TryFrom<HashMap<String, AttributeValue>> for Verification {
             "expected field code for type Verification.",
             map.clone(),
         ))?;
-        let count = map.remove("count").ok_or(Error::internal(
-            "expected field count for type Verification.",
+        let created = map.remove("created").ok_or(Error::internal(
+            "expected field created for type Verification.",
             map.clone(),
         ))?;
         let ttl = map.remove("ttl").ok_or(Error::internal(
@@ -93,14 +96,17 @@ impl TryFrom<HashMap<String, AttributeValue>> for Verification {
                 ));
             }
         };
-        let count = match count {
-            AttributeValue::N(count) => count.parse::<u8>().map_err(|_| {
-                Error::internal("error converting count from database string to an int", ())
+        let created = match created {
+            AttributeValue::N(created) => created.parse::<i64>().map_err(|_| {
+                Error::internal(
+                    "error converting created from database string to an int",
+                    (),
+                )
             })?,
             _ => {
                 return Err(Error::internal(
-                    "expected the count field of Verification to be a number",
-                    count,
+                    "expected the created field of Verification to be a number",
+                    created,
                 ));
             }
         };
@@ -115,13 +121,15 @@ impl TryFrom<HashMap<String, AttributeValue>> for Verification {
                 ));
             }
         };
+        let created = DateTime::<Utc>::from_timestamp(created, 0)
+            .ok_or(Error::server("error converting seconds to date-time"))?;
         let ttl = DateTime::<Utc>::from_timestamp(ttl, 0)
             .ok_or(Error::server("error converting seconds to date-time"))?;
         let phone = Phone::new(phone).map_err(Error::server)?;
         Ok(Self {
             phone,
             code,
-            count,
+            created,
             ttl,
         })
     }

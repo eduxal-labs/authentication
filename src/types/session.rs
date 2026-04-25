@@ -1,17 +1,50 @@
-use crate::types::{Error, Id};
+use crate::types::{Authorized, Error, Id, Registered, Token, User};
 use aws_sdk_dynamodb::types::AttributeValue;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Session {
-    id: Id,
-    user: Id,
-    refresh: Id,
-    device: String,
-    created: DateTime<Utc>,
-    ttl: DateTime<Utc>,
+    pub id: Id,
+    pub user: Id,
+    pub refresh: Id,
+    pub device: String,
+    pub created: DateTime<Utc>,
+    pub ttl: DateTime<Utc>,
+}
+
+impl Session {
+    const TTL: Duration = Duration::days(100);
+    pub fn new(user: Id, device: String) -> Self {
+        let id = Id::default();
+        let refresh = id;
+        let created = Utc::now();
+        let ttl = created + Self::TTL;
+        Self {
+            id,
+            user,
+            refresh,
+            device,
+            created,
+            ttl,
+        }
+    }
+    pub fn authorized(&mut self, user: User) -> Result<Authorized, Error> {
+        let session = self.id;
+        let access = &Token::access(user.id, session);
+        let refresh = &Token::refresh(user.id, session);
+        self.refresh = refresh.id;
+        Authorized::registered(session, access, refresh, user)
+    }
+
+    pub fn registered(&mut self, user: User) -> Result<Registered, Error> {
+        let session = self.id;
+        let access = &Token::access(user.id, session);
+        let refresh = &Token::refresh(user.id, session);
+        self.refresh = refresh.id;
+        Ok(Registered::new(session, access, refresh, user)?)
+    }
 }
 
 type Map = HashMap<String, AttributeValue>;

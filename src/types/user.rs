@@ -6,11 +6,49 @@ use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct User {
-    id: Id,
-    phone: Phone,
-    name: String,
-    profiled: bool,
-    created: DateTime<Utc>,
+    pub id: Id,
+    pub phone: Phone,
+    pub name: String,
+    pub level: Level,
+    pub status: Status,
+    pub profiled: bool,
+    pub created: DateTime<Utc>,
+}
+
+#[derive(Default, Copy, Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub enum Level {
+    #[default]
+    Normal,
+    System,
+    Super,
+}
+
+#[derive(Default, Copy, Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub enum Status {
+    #[default]
+    Active,
+    Invited,
+    Blocked,
+    Deleted,
+}
+
+impl User {
+    pub fn new(phone: Phone, name: String) -> Self {
+        let id = Id::default();
+        let level = Level::Normal;
+        let status = Status::Active;
+        let profiled = false;
+        let created = Utc::now();
+        Self {
+            id,
+            phone,
+            name,
+            level,
+            status,
+            profiled,
+            created,
+        }
+    }
 }
 
 type Map = HashMap<String, AttributeValue>;
@@ -23,6 +61,7 @@ impl From<User> for Map {
             (String::from("id"), user.id.into()),
             (String::from("phone"), user.phone.into()),
             (String::from("name"), AttributeValue::S(user.name)),
+            (String::from("level"), user.level.into()),
             (String::from("profiled"), profiled),
             (String::from("created"), AttributeValue::N(created)),
         ]
@@ -55,6 +94,14 @@ impl TryFrom<Map> for User {
             "expected field name for type User.",
             map.clone(),
         ))?;
+        let level = map.remove("level").ok_or(Error::internal(
+            "expected field level for type User.",
+            map.clone(),
+        ))?;
+        let status = map.remove("status").ok_or(Error::internal(
+            "expected field status for type User.",
+            map.clone(),
+        ))?;
         let profiled = map.remove("profiled").ok_or(Error::internal(
             "expected field profiled for type User.",
             map.clone(),
@@ -84,6 +131,8 @@ impl TryFrom<Map> for User {
                 ));
             }
         };
+        let level = level.try_into()?;
+        let status = status.try_into()?;
         let profiled = match profiled {
             AttributeValue::Bool(profiled) => profiled,
             _ => {
@@ -114,8 +163,64 @@ impl TryFrom<Map> for User {
             id,
             phone,
             name,
+            level,
+            status,
             profiled,
             created,
         })
+    }
+}
+
+impl From<Level> for AttributeValue {
+    fn from(level: Level) -> Self {
+        match level {
+            Level::Normal => AttributeValue::S(String::from("Normal")),
+            Level::System => AttributeValue::S(String::from("System")),
+            Level::Super => AttributeValue::S(String::from("Super")),
+        }
+    }
+}
+
+impl TryFrom<AttributeValue> for Level {
+    type Error = Error;
+    fn try_from(value: AttributeValue) -> Result<Self, Self::Error> {
+        if let AttributeValue::S(value) = value {
+            let value = value.to_lowercase();
+            return match value.as_str() {
+                "normal" => Ok(Self::Normal),
+                "system" => Ok(Self::System),
+                "super" => Ok(Self::Super),
+                _ => Err(Error::server("invalid value for User Level")),
+            };
+        }
+        Err(Error::server("invalid AttributeValue type for User Level"))
+    }
+}
+
+impl From<Status> for AttributeValue {
+    fn from(status: Status) -> Self {
+        match status {
+            Status::Active => AttributeValue::S(String::from("Active")),
+            Status::Invited => AttributeValue::S(String::from("Invited")),
+            Status::Blocked => AttributeValue::S(String::from("Blocked")),
+            Status::Deleted => AttributeValue::S(String::from("Deleted")),
+        }
+    }
+}
+
+impl TryFrom<AttributeValue> for Status {
+    type Error = Error;
+    fn try_from(value: AttributeValue) -> Result<Self, Self::Error> {
+        if let AttributeValue::S(value) = value {
+            let value = value.to_lowercase();
+            return match value.as_str() {
+                "active" => Ok(Self::Active),
+                "invited" => Ok(Self::Invited),
+                "blocked" => Ok(Self::Blocked),
+                "deleted" => Ok(Self::Deleted),
+                _ => Err(Error::server("invalid value for User Status")),
+            };
+        }
+        Err(Error::server("invalid AttributeValue type for User Status"))
     }
 }

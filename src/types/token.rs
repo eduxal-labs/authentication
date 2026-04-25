@@ -12,11 +12,11 @@ use std::str::FromStr;
 macros::key!("PASETO_PASSWORD");
 
 /// TTL for access tokens in days.
-const ACCESS_TTL: i64 = 7;
+const ACCESS_TTL: i64 = 2;
 /// TTL for refresh tokens in days.
 const REFRESH_TTL: i64 = 52;
-/// TTL for setup tokens in days.
-const SETUP_TTL: i64 = 1;
+/// TTL for setup tokens in minutes.
+const SETUP_TTL: i64 = 15;
 
 // ── Purpose trait ─────────────────────────────────────────────────────────────
 
@@ -31,7 +31,7 @@ const SETUP_TTL: i64 = 1;
 /// ```
 pub trait Purpose: Send + Sync + 'static {
     /// How long tokens of this purpose remain valid, in days.
-    const TTL: i64;
+    const TTL: Duration;
     /// The discriminant stored inside the encrypted payload (`1` = Access, `2` = Refresh, `3` = Setup).
     const KIND: u8;
 }
@@ -51,17 +51,17 @@ pub struct Refresh;
 pub struct Setup;
 
 impl Purpose for Access {
-    const TTL: i64 = ACCESS_TTL;
+    const TTL: Duration = Duration::days(ACCESS_TTL);
     const KIND: u8 = 1;
 }
 
 impl Purpose for Refresh {
-    const TTL: i64 = REFRESH_TTL;
+    const TTL: Duration = Duration::days(REFRESH_TTL);
     const KIND: u8 = 2;
 }
 
 impl Purpose for Setup {
-    const TTL: i64 = SETUP_TTL;
+    const TTL: Duration = Duration::minutes(SETUP_TTL);
     const KIND: u8 = 3;
 }
 
@@ -111,7 +111,7 @@ impl<P: Purpose> Token<P> {
     fn new(subject: Subject, session: Option<Id>) -> Self {
         let id = Id::default();
         let created = Utc::now();
-        let expires = created + Duration::days(P::TTL);
+        let expires = created + P::TTL;
         Self {
             id,
             subject,
@@ -153,17 +153,53 @@ impl Token<Access> {
     pub fn access(user: Id, session: Id) -> Self {
         Self::new(Subject::Id(user), Some(session))
     }
+
+    pub fn subject(&self) -> Result<Id, Error> {
+        match self.subject {
+            Subject::Id(id) => Ok(id),
+            Subject::Phone(_) => Err(Error::server(
+                "Access token with phone as subject instead of the user id",
+            )),
+        }
+    }
 }
 
 impl Token<Refresh> {
     pub fn refresh(user: Id, session: Id) -> Self {
         Self::new(Subject::Id(user), Some(session))
     }
+
+    pub fn subject(&self) -> Result<Id, Error> {
+        match self.subject {
+            Subject::Id(id) => Ok(id),
+            Subject::Phone(_) => Err(Error::server(
+                "Refresh token with phone as subject instead of the user id",
+            )),
+        }
+    }
+
+    pub fn session(&self) -> Result<Id, Error> {
+        match self.session {
+            Some(id) => Ok(id),
+            None => Err(Error::server(
+                "Valid Refresh with token with a Null session.",
+            )),
+        }
+    }
 }
 
 impl Token<Setup> {
     pub fn setup(phone: Phone) -> Self {
         Self::new(Subject::Phone(phone), None)
+    }
+
+    pub fn subject(&self) -> Result<Phone, Error> {
+        match &self.subject {
+            Subject::Phone(phone) => Ok(phone.clone()),
+            Subject::Id(_) => Err(Error::server(
+                "Setup token with id as subject instead of the user's phone",
+            )),
+        }
     }
 }
 

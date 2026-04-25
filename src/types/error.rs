@@ -25,6 +25,10 @@ pub enum Error {
     Unauthorized,
     #[error("permission denied")]
     Forbidden,
+    #[error("record already exists")]
+    RecordAlreadyExists,
+    #[error("nothing new to update")]
+    UptoDate,
     #[error("internal server error")]
     InternalServerError,
 }
@@ -60,7 +64,9 @@ impl IntoResponse for Error {
             | Self::InvalidPhoneNumber
             | Self::InvalidId
             | Self::InvalidSession
-            | Self::InvalidToken => StatusCode::BAD_REQUEST,
+            | Self::InvalidToken
+            | Self::UptoDate => StatusCode::BAD_REQUEST,
+            Self::RecordAlreadyExists => StatusCode::CONFLICT,
             Self::Unauthorized => StatusCode::UNAUTHORIZED,
             Self::Forbidden => StatusCode::FORBIDDEN,
             Self::InternalServerError => StatusCode::INTERNAL_SERVER_ERROR,

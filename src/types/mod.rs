@@ -1,3 +1,4 @@
+mod authorized;
 mod error;
 mod id;
 mod phone;
@@ -6,6 +7,7 @@ mod token;
 mod user;
 mod verification;
 
+pub use authorized::*;
 pub use error::*;
 pub use id::*;
 pub use phone::*;

@@ -7,8 +7,9 @@ use chrono::Utc;
 
 impl Get<Phone, User> for Client {
     async fn get(&self, phone: Phone) -> Result<Option<User>, Error> {
-        let key = [(String::from("phone"), phone.into())];
-        <Self as Table<User>>::get(&self, key).await
+        let key = [("phone", phone.into())];
+        let items = <Self as Table<User>>::list(&self, key, Some("phone-index")).await?;
+        Ok(items.into_iter().next())
     }
 }
 

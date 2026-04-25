@@ -35,12 +35,12 @@ pub enum Error {
 
 impl Error {
     pub fn internal<T: std::fmt::Debug>(msg: &'static str, output: T) -> Self {
-        error!("message: {}, output: {:#?}", msg, output);
+        error!("message: {:?}, output: {:?}", msg, output);
         Self::InternalServerError
     }
 
-    pub fn server<T: std::fmt::Display>(err: T) -> Self {
-        error!("internal server error: {}", err);
+    pub fn server<T: std::fmt::Debug>(err: T) -> Self {
+        error!("internal server error: {:?}", err);
         Self::InternalServerError
     }
 

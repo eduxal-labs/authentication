@@ -7,6 +7,7 @@ impl<I: Item> Table<I> for Client {
     async fn list<const L: usize>(
         &self,
         keys: [(&str, AttributeValue); L],
+        index: Option<&str>,
     ) -> Result<Vec<I>, Error> {
         let mut expr = String::new();
         for (key, _) in &keys {
@@ -21,9 +22,11 @@ impl<I: Item> Table<I> for Client {
             (key, value)
         };
         let values = Some(keys.into_iter().map(operator).collect::<Map>());
-        let output = self
-            .query()
-            .table_name(I::TABLE)
+        let mut query = self.query().table_name(I::TABLE);
+        if let Some(index) = index {
+            query = query.index_name(index);
+        }
+        let output = query
             .key_condition_expression(expr)
             .set_expression_attribute_values(values)
             .send()

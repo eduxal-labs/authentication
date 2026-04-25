@@ -6,7 +6,7 @@ use aws_sdk_dynamodb::Client;
 impl List<Id, Session> for Client {
     async fn list(&self, user: Id) -> Result<Vec<Session>, Error> {
         let key = [("user", user.into())];
-        <Self as Table<Session>>::list(&self, key).await
+        <Self as Table<Session>>::list(&self, key, Some("user-index")).await
     }
 }
 

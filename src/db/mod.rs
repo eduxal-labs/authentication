@@ -14,9 +14,14 @@ pub trait Item:
 }
 
 pub trait Table<I: Item> {
+    async fn list<const L: usize>(&self, key: [(&str, AttributeValue); L])
+    -> Result<Vec<I>, Error>;
     async fn get(&self, key: impl Into<Map>) -> Result<Option<I>, Error>;
     async fn find(&self, key: impl Into<Map>) -> Result<I, Error> {
         self.get(key).await?.try_into()
     }
     async fn put(&self, item: I) -> Result<(), Error>;
+    async fn update(&self, key: impl Into<Map>, update: impl Into<Map>)
+    -> Result<Option<I>, Error>;
+    async fn delete(&self, key: impl Into<Map>) -> Result<(), Error>;
 }

@@ -44,6 +44,9 @@ jobs:
 
       # sam build invokes cargo-lambda internally via BuildMethod: rust-cargolambda
       - name: Build
+        env:
+          WHATSAPP_TOKEN: ${{ secrets.WHATSAPP_TOKEN }}
+          PASETO_PASSWORD: ${{ secrets.PASETO_PASSWORD }}
         run: sam build
 
       - name: Deploy

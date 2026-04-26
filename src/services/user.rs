@@ -31,7 +31,7 @@ impl Update<Id, String, User> for Client {
 impl Update<Id, Phone, User> for Client {
     async fn update(&self, id: Id, phone: Phone) -> Result<Option<User>, Error> {
         let key = [(String::from("id"), id.into())];
-        let update = [(String::from("name"), phone.into())];
+        let update = [(String::from("phone"), phone.into())];
         <Self as Table<User>>::update(&self, key, update).await
     }
 }
@@ -65,7 +65,7 @@ impl Users for Authenticator {
         }
         let existing = <Client as Get<Phone, Verification>>::get(db, phone.clone()).await?;
         if let Some(verification) = existing {
-            if Utc::now().timestamp() > (verification.created + Verification::RLTS).timestamp() {
+            if Utc::now().timestamp() < (verification.created + Verification::RLTS).timestamp() {
                 return Err(Error::SlowDown);
             }
         }

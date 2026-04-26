@@ -1,0 +1,2853 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Eduxal — Authentication API Reference</title>
+        <style>
+            /* ── Reset & base ───────────────────────────────────────── */
+            *,
+            *::before,
+            *::after {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
+
+            :root {
+                --bg: #0f1117;
+                --bg-surface: #161b27;
+                --bg-card: #1c2333;
+                --bg-code: #0d1117;
+                --border: #2a3349;
+                --text: #cdd9ef;
+                --text-muted: #7b8fb0;
+                --text-head: #e8eef8;
+                --accent: #4f8ef7;
+                --accent-dark: #2563eb;
+                --green: #3fb950;
+                --red: #f85149;
+                --yellow: #d29922;
+                --purple: #bc8cff;
+                --orange: #f0883e;
+                --cyan: #39c5cf;
+                --sidebar-w: 280px;
+                --font-mono:
+                    "JetBrains Mono", "Fira Code", "Cascadia Code",
+                    ui-monospace, monospace;
+                --font-sans:
+                    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
+                    sans-serif;
+                --radius: 8px;
+            }
+
+            html {
+                scroll-behavior: smooth;
+            }
+
+            body {
+                font-family: var(--font-sans);
+                background: var(--bg);
+                color: var(--text);
+                line-height: 1.65;
+                display: flex;
+            }
+
+            /* ── Sidebar ────────────────────────────────────────────── */
+            #sidebar {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: var(--sidebar-w);
+                height: 100vh;
+                overflow-y: auto;
+                background: var(--bg-surface);
+                border-right: 1px solid var(--border);
+                padding: 0 0 32px 0;
+                z-index: 100;
+            }
+
+            #sidebar::-webkit-scrollbar {
+                width: 4px;
+            }
+            #sidebar::-webkit-scrollbar-thumb {
+                background: var(--border);
+                border-radius: 4px;
+            }
+
+            .sidebar-logo {
+                padding: 22px 24px 16px;
+                border-bottom: 1px solid var(--border);
+            }
+
+            .sidebar-logo h1 {
+                font-size: 16px;
+                font-weight: 700;
+                color: var(--text-head);
+                letter-spacing: 0.5px;
+            }
+
+            .sidebar-logo p {
+                font-size: 11px;
+                color: var(--text-muted);
+                margin-top: 2px;
+            }
+
+            .sidebar-section {
+                padding: 18px 16px 4px;
+            }
+
+            .sidebar-section-title {
+                font-size: 10px;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 1.2px;
+                color: var(--text-muted);
+                padding: 0 8px;
+                margin-bottom: 4px;
+            }
+
+            .sidebar-link {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 6px 8px;
+                border-radius: var(--radius);
+                text-decoration: none;
+                color: var(--text-muted);
+                font-size: 13px;
+                transition:
+                    background 0.15s,
+                    color 0.15s;
+            }
+
+            .sidebar-link:hover {
+                background: var(--bg-card);
+                color: var(--text);
+            }
+
+            .sidebar-link.active {
+                background: rgba(79, 142, 247, 0.12);
+                color: var(--accent);
+            }
+
+            .method-badge {
+                font-family: var(--font-mono);
+                font-size: 9.5px;
+                font-weight: 700;
+                padding: 1px 5px;
+                border-radius: 4px;
+                letter-spacing: 0.5px;
+                flex-shrink: 0;
+            }
+
+            .badge-get {
+                background: rgba(63, 185, 80, 0.15);
+                color: var(--green);
+            }
+            .badge-post {
+                background: rgba(79, 142, 247, 0.15);
+                color: var(--accent);
+            }
+            .badge-patch {
+                background: rgba(210, 153, 34, 0.15);
+                color: var(--yellow);
+            }
+            .badge-delete {
+                background: rgba(248, 81, 73, 0.15);
+                color: var(--red);
+            }
+
+            /* ── Main content ───────────────────────────────────────── */
+            #main {
+                margin-left: var(--sidebar-w);
+                flex: 1;
+                max-width: 900px;
+                padding: 48px 56px 96px;
+            }
+
+            /* ── Hero ───────────────────────────────────────────────── */
+            .hero {
+                padding-bottom: 40px;
+                border-bottom: 1px solid var(--border);
+                margin-bottom: 48px;
+            }
+
+            .hero h1 {
+                font-size: 32px;
+                font-weight: 800;
+                color: var(--text-head);
+                line-height: 1.2;
+                margin-bottom: 12px;
+            }
+
+            .hero p {
+                font-size: 15px;
+                color: var(--text-muted);
+                max-width: 640px;
+                margin-bottom: 20px;
+            }
+
+            .hero-meta {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+
+            .chip {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                background: var(--bg-card);
+                border: 1px solid var(--border);
+                border-radius: 20px;
+                padding: 4px 12px;
+                font-size: 12px;
+                color: var(--text-muted);
+            }
+
+            .chip span {
+                color: var(--text);
+                font-weight: 500;
+            }
+
+            /* ── Section headings ───────────────────────────────────── */
+            .section {
+                margin-bottom: 64px;
+            }
+
+            .section-title {
+                font-size: 22px;
+                font-weight: 700;
+                color: var(--text-head);
+                margin-bottom: 16px;
+                padding-bottom: 10px;
+                border-bottom: 1px solid var(--border);
+            }
+
+            h3 {
+                font-size: 15px;
+                font-weight: 600;
+                color: var(--text-head);
+                margin: 24px 0 10px;
+            }
+
+            p,
+            li {
+                font-size: 14px;
+                color: var(--text);
+            }
+
+            ul,
+            ol {
+                padding-left: 20px;
+            }
+            li {
+                margin-bottom: 4px;
+            }
+
+            /* ── Endpoint cards ─────────────────────────────────────── */
+            .endpoint-card {
+                background: var(--bg-surface);
+                border: 1px solid var(--border);
+                border-radius: 10px;
+                margin-bottom: 48px;
+                overflow: hidden;
+            }
+
+            .endpoint-header {
+                display: flex;
+                align-items: center;
+                gap: 14px;
+                padding: 18px 24px;
+                background: var(--bg-card);
+                border-bottom: 1px solid var(--border);
+            }
+
+            .method-pill {
+                font-family: var(--font-mono);
+                font-size: 12px;
+                font-weight: 700;
+                padding: 4px 10px;
+                border-radius: 6px;
+                letter-spacing: 0.5px;
+            }
+
+            .pill-get {
+                background: rgba(63, 185, 80, 0.18);
+                color: var(--green);
+            }
+            .pill-post {
+                background: rgba(79, 142, 247, 0.18);
+                color: var(--accent);
+            }
+            .pill-patch {
+                background: rgba(210, 153, 34, 0.18);
+                color: var(--yellow);
+            }
+            .pill-delete {
+                background: rgba(248, 81, 73, 0.18);
+                color: var(--red);
+            }
+
+            .endpoint-path {
+                font-family: var(--font-mono);
+                font-size: 16px;
+                color: var(--text-head);
+                font-weight: 600;
+            }
+
+            .endpoint-desc {
+                font-size: 13px;
+                color: var(--text-muted);
+                margin-left: auto;
+            }
+
+            .endpoint-body {
+                padding: 24px;
+            }
+
+            .endpoint-summary {
+                font-size: 14px;
+                color: var(--text);
+                margin-bottom: 20px;
+            }
+
+            .auth-badge {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                background: rgba(188, 140, 255, 0.1);
+                border: 1px solid rgba(188, 140, 255, 0.25);
+                border-radius: 6px;
+                padding: 5px 10px;
+                font-size: 12px;
+                color: var(--purple);
+                margin-bottom: 20px;
+            }
+
+            .auth-badge.no-auth {
+                background: rgba(123, 143, 176, 0.1);
+                border-color: rgba(123, 143, 176, 0.2);
+                color: var(--text-muted);
+            }
+
+            /* ── Tables ─────────────────────────────────────────────── */
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 13px;
+                margin: 12px 0 20px;
+            }
+
+            thead th {
+                background: var(--bg-card);
+                color: var(--text-muted);
+                font-size: 11px;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.8px;
+                padding: 8px 12px;
+                text-align: left;
+                border-bottom: 1px solid var(--border);
+            }
+
+            tbody tr {
+                border-bottom: 1px solid rgba(42, 51, 73, 0.6);
+            }
+            tbody tr:last-child {
+                border-bottom: none;
+            }
+
+            td {
+                padding: 9px 12px;
+                vertical-align: top;
+                color: var(--text);
+                line-height: 1.5;
+            }
+
+            td code {
+                font-family: var(--font-mono);
+                font-size: 12px;
+                background: var(--bg-code);
+                padding: 1px 5px;
+                border-radius: 4px;
+                color: var(--cyan);
+            }
+
+            /* ── Code blocks ────────────────────────────────────────── */
+            .code-block {
+                background: var(--bg-code);
+                border: 1px solid var(--border);
+                border-radius: var(--radius);
+                overflow: hidden;
+                margin: 12px 0 20px;
+                font-size: 13px;
+            }
+
+            .code-block-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 8px 14px;
+                background: rgba(255, 255, 255, 0.03);
+                border-bottom: 1px solid var(--border);
+            }
+
+            .code-lang {
+                font-size: 10px;
+                font-weight: 600;
+                letter-spacing: 0.8px;
+                text-transform: uppercase;
+                color: var(--text-muted);
+            }
+
+            .copy-btn {
+                background: none;
+                border: none;
+                cursor: pointer;
+                color: var(--text-muted);
+                font-size: 11px;
+                padding: 2px 6px;
+                border-radius: 4px;
+                transition:
+                    color 0.15s,
+                    background 0.15s;
+                font-family: var(--font-sans);
+            }
+
+            .copy-btn:hover {
+                background: var(--bg-card);
+                color: var(--text);
+            }
+
+            pre {
+                padding: 16px 18px;
+                overflow-x: auto;
+                line-height: 1.6;
+            }
+
+            pre::-webkit-scrollbar {
+                height: 4px;
+            }
+            pre::-webkit-scrollbar-thumb {
+                background: var(--border);
+                border-radius: 4px;
+            }
+
+            code {
+                font-family: var(--font-mono);
+            }
+
+            /* JSON highlight tokens */
+            .t-key {
+                color: #79c0ff;
+            }
+            .t-str {
+                color: #a5d6ff;
+            }
+            .t-num {
+                color: #f0883e;
+            }
+            .t-bool {
+                color: #ff7b72;
+            }
+            .t-null {
+                color: #6e7681;
+            }
+            .t-punc {
+                color: #8b949e;
+            }
+            .t-comment {
+                color: #484f58;
+                font-style: italic;
+            }
+            .t-method {
+                color: var(--green);
+                font-weight: 700;
+            }
+            .t-path {
+                color: var(--cyan);
+            }
+            .t-header {
+                color: var(--purple);
+            }
+            .t-value {
+                color: #a5d6ff;
+            }
+
+            /* ── Status badges in tables ────────────────────────────── */
+            .st {
+                font-family: var(--font-mono);
+                font-size: 11.5px;
+                font-weight: 700;
+                padding: 2px 6px;
+                border-radius: 4px;
+                white-space: nowrap;
+            }
+            .st-2 {
+                background: rgba(63, 185, 80, 0.15);
+                color: var(--green);
+            }
+            .st-4 {
+                background: rgba(210, 153, 34, 0.15);
+                color: var(--yellow);
+            }
+            .st-40 {
+                background: rgba(248, 81, 73, 0.15);
+                color: var(--red);
+            }
+            .st-5 {
+                background: rgba(188, 140, 255, 0.15);
+                color: var(--purple);
+            }
+
+            /* ── Info / warning callouts ────────────────────────────── */
+            .callout {
+                display: flex;
+                gap: 10px;
+                border-radius: var(--radius);
+                padding: 12px 14px;
+                margin: 12px 0;
+                font-size: 13px;
+            }
+
+            .callout-icon {
+                flex-shrink: 0;
+                font-size: 15px;
+            }
+
+            .callout-info {
+                background: rgba(79, 142, 247, 0.08);
+                border: 1px solid rgba(79, 142, 247, 0.2);
+                color: #90b8f8;
+            }
+
+            .callout-warn {
+                background: rgba(210, 153, 34, 0.08);
+                border: 1px solid rgba(210, 153, 34, 0.22);
+                color: #d4a840;
+            }
+
+            .callout-danger {
+                background: rgba(248, 81, 73, 0.08);
+                border: 1px solid rgba(248, 81, 73, 0.2);
+                color: #f57572;
+            }
+
+            /* ── Flow diagram ───────────────────────────────────────── */
+            .flow-box {
+                background: var(--bg-code);
+                border: 1px solid var(--border);
+                border-radius: var(--radius);
+                padding: 18px 20px;
+                margin: 12px 0;
+            }
+
+            .flow-step {
+                display: flex;
+                align-items: flex-start;
+                gap: 14px;
+                margin-bottom: 10px;
+            }
+
+            .flow-step:last-child {
+                margin-bottom: 0;
+            }
+
+            .flow-num {
+                flex-shrink: 0;
+                width: 22px;
+                height: 22px;
+                border-radius: 50%;
+                background: var(--accent-dark);
+                color: #fff;
+                font-size: 11px;
+                font-weight: 700;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin-top: 1px;
+            }
+
+            .flow-arrow {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                font-size: 13px;
+                color: var(--text-muted);
+                padding: 4px 0;
+            }
+
+            .flow-arrow::before {
+                content: "↓";
+                color: var(--border);
+                font-size: 16px;
+                padding-left: 6px;
+            }
+
+            /* ── Token types table ──────────────────────────────────── */
+            .token-grid {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 12px;
+                margin: 14px 0;
+            }
+
+            .token-card {
+                background: var(--bg-card);
+                border: 1px solid var(--border);
+                border-radius: var(--radius);
+                padding: 14px 16px;
+            }
+
+            .token-card-title {
+                font-size: 13px;
+                font-weight: 700;
+                color: var(--text-head);
+                margin-bottom: 8px;
+            }
+
+            .token-meta {
+                font-size: 12px;
+                color: var(--text-muted);
+            }
+            .token-meta strong {
+                color: var(--text);
+            }
+
+            /* ── Field required/optional indicators ────────────────── */
+            .req {
+                color: var(--red);
+                font-weight: 700;
+                font-size: 11px;
+            }
+            .opt {
+                color: var(--text-muted);
+                font-size: 11px;
+            }
+
+            /* ── Responsive ─────────────────────────────────────────── */
+            @media (max-width: 900px) {
+                #sidebar {
+                    display: none;
+                }
+                #main {
+                    margin-left: 0;
+                    padding: 24px 20px 64px;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <!-- ══════════════════════════════════════════════════════════
+     SIDEBAR
+═══════════════════════════════════════════════════════════ -->
+        <nav id="sidebar">
+            <div class="sidebar-logo">
+                <h1>Eduxal Auth API</h1>
+                <p>v0.1.0 · auth.eduxal.com</p>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">Overview</div>
+                <a class="sidebar-link" href="#overview">Introduction</a>
+                <a class="sidebar-link" href="#auth-flows">Auth Flows</a>
+                <a class="sidebar-link" href="#tokens">Token System</a>
+                <a class="sidebar-link" href="#errors">Error Reference</a>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">Authentication</div>
+                <a class="sidebar-link" href="#login">
+                    <span class="method-badge badge-post">POST</span>/auth/login
+                </a>
+                <a class="sidebar-link" href="#verify">
+                    <span class="method-badge badge-post">POST</span
+                    >/auth/verify
+                </a>
+                <a class="sidebar-link" href="#setup">
+                    <span class="method-badge badge-post">POST</span>/auth/setup
+                </a>
+                <a class="sidebar-link" href="#refresh">
+                    <span class="method-badge badge-get">GET</span>/auth/refresh
+                </a>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">User</div>
+                <a class="sidebar-link" href="#get-user">
+                    <span class="method-badge badge-get">GET</span>/user
+                </a>
+                <a class="sidebar-link" href="#rename">
+                    <span class="method-badge badge-patch">PATCH</span
+                    >/user/rename
+                </a>
+                <a class="sidebar-link" href="#change-phone">
+                    <span class="method-badge badge-post">POST</span
+                    >/user/change-phone
+                </a>
+                <a class="sidebar-link" href="#confirm-phone">
+                    <span class="method-badge badge-patch">PATCH</span
+                    >/user/confirm-change-phone
+                </a>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">Sessions</div>
+                <a class="sidebar-link" href="#list-sessions">
+                    <span class="method-badge badge-get">GET</span>/sessions
+                </a>
+                <a class="sidebar-link" href="#delete-session">
+                    <span class="method-badge badge-delete">DEL</span
+                    >/sessions/{id}
+                </a>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">Health</div>
+                <a class="sidebar-link" href="#health">
+                    <span class="method-badge badge-get">GET</span>/health
+                </a>
+            </div>
+        </nav>
+
+        <!-- ══════════════════════════════════════════════════════════
+     MAIN CONTENT
+═══════════════════════════════════════════════════════════ -->
+        <main id="main">
+            <!-- Hero -->
+            <div class="hero" id="overview">
+                <h1>Authentication API Reference</h1>
+                <p>
+                    Passwordless, phone-based OTP authentication for the Eduxal
+                    platform. Identities are verified via a 6-digit code
+                    delivered over WhatsApp. All tokens are PASETO v4-local
+                    (symmetric encryption).
+                </p>
+                <div class="hero-meta">
+                    <div class="chip">
+                        Base URL <span>https://auth.eduxal.com</span>
+                    </div>
+                    <div class="chip">
+                        Runtime <span>AWS Lambda · arm64</span>
+                    </div>
+                    <div class="chip">Database <span>DynamoDB</span></div>
+                    <div class="chip">
+                        OTP Delivery <span>WhatsApp Business API</span>
+                    </div>
+                    <div class="chip">Tokens <span>PASETO v4-local</span></div>
+                </div>
+            </div>
+
+            <!-- ── Auth Flows ─────────────────────────────────────────── -->
+            <section class="section" id="auth-flows">
+                <h2 class="section-title">Authentication Flows</h2>
+
+                <h3>New User Registration</h3>
+                <div class="flow-box">
+                    <div class="flow-step">
+                        <div class="flow-num">1</div>
+                        <div>
+                            <span
+                                style="
+                                    color: var(--accent);
+                                    font-family: var(--font-mono);
+                                    font-size: 13px;
+                                    font-weight: 700;
+                                "
+                                >POST /auth/login</span
+                            >
+                            <span
+                                style="
+                                    color: var(--text-muted);
+                                    font-size: 13px;
+                                "
+                            >
+                                — Send
+                                <code
+                                    style="
+                                        font-family: var(--font-mono);
+                                        font-size: 12px;
+                                        color: var(--cyan);
+                                    "
+                                    >{ phone }</code
+                                ></span
+                            ><br />
+                            <span
+                                style="
+                                    color: var(--text-muted);
+                                    font-size: 12px;
+                                "
+                                >→ OTP sent to phone via WhatsApp. Returns
+                                <code
+                                    style="
+                                        font-family: var(--font-mono);
+                                        font-size: 11px;
+                                        color: var(--cyan);
+                                    "
+                                    >{ phone, created, ttl }</code
+                                >.</span
+                            >
+                        </div>
+                    </div>
+                    <div class="flow-arrow"></div>
+                    <div class="flow-step">
+                        <div class="flow-num">2</div>
+                        <div>
+                            <span
+                                style="
+                                    color: var(--accent);
+                                    font-family: var(--font-mono);
+                                    font-size: 13px;
+                                    font-weight: 700;
+                                "
+                                >POST /auth/verify</span
+                            >
+                            <span
+                                style="
+                                    color: var(--text-muted);
+                                    font-size: 13px;
+                                "
+                            >
+                                — Send
+                                <code
+                                    style="
+                                        font-family: var(--font-mono);
+                                        font-size: 12px;
+                                        color: var(--cyan);
+                                    "
+                                    >{ phone, code, session: null, device
+                                    }</code
+                                ></span
+                            ><br />
+                            <span
+                                style="
+                                    color: var(--text-muted);
+                                    font-size: 12px;
+                                "
+                                >→ Phone verified; no existing account detected.
+                                Returns
+                                <code
+                                    style="
+                                        font-family: var(--font-mono);
+                                        font-size: 11px;
+                                        color: var(--cyan);
+                                    "
+                                    >{ token }</code
+                                >
+                                — a 15-min Setup token.</span
+                            >
+                        </div>
+                    </div>
+                    <div class="flow-arrow"></div>
+                    <div class="flow-step">
+                        <div class="flow-num">3</div>
+                        <div>
+                            <span
+                                style="
+                                    color: var(--accent);
+                                    font-family: var(--font-mono);
+                                    font-size: 13px;
+                                    font-weight: 700;
+                                "
+                                >POST /auth/setup</span
+                            >
+                            <span
+                                style="
+                                    color: var(--text-muted);
+                                    font-size: 13px;
+                                "
+                            >
+                                — Header: Setup token. Body:
+                                <code
+                                    style="
+                                        font-family: var(--font-mono);
+                                        font-size: 12px;
+                                        color: var(--cyan);
+                                    "
+                                    >{ name, device }</code
+                                ></span
+                            ><br />
+                            <span
+                                style="
+                                    color: var(--text-muted);
+                                    font-size: 12px;
+                                "
+                                >→ Account created. Returns
+                                <code
+                                    style="
+                                        font-family: var(--font-mono);
+                                        font-size: 11px;
+                                        color: var(--cyan);
+                                    "
+                                    >{ session, access_token, refresh_token,
+                                    user }</code
+                                >.</span
+                            >
+                        </div>
+                    </div>
+                </div>
+
+                <h3>Returning User Login</h3>
+                <div class="flow-box">
+                    <div class="flow-step">
+                        <div class="flow-num">1</div>
+                        <div>
+                            <span
+                                style="
+                                    color: var(--accent);
+                                    font-family: var(--font-mono);
+                                    font-size: 13px;
+                                    font-weight: 700;
+                                "
+                                >POST /auth/login</span
+                            >
+                            <span
+                                style="
+                                    color: var(--text-muted);
+                                    font-size: 13px;
+                                "
+                            >
+                                — Send
+                                <code
+                                    style="
+                                        font-family: var(--font-mono);
+                                        font-size: 12px;
+                                        color: var(--cyan);
+                                    "
+                                    >{ phone }</code
+                                ></span
+                            >
+                        </div>
+                    </div>
+                    <div class="flow-arrow"></div>
+                    <div class="flow-step">
+                        <div class="flow-num">2</div>
+                        <div>
+                            <span
+                                style="
+                                    color: var(--accent);
+                                    font-family: var(--font-mono);
+                                    font-size: 13px;
+                                    font-weight: 700;
+                                "
+                                >POST /auth/verify</span
+                            >
+                            <span
+                                style="
+                                    color: var(--text-muted);
+                                    font-size: 13px;
+                                "
+                            >
+                                — Send
+                                <code
+                                    style="
+                                        font-family: var(--font-mono);
+                                        font-size: 12px;
+                                        color: var(--cyan);
+                                    "
+                                    >{ phone, code, session, device }</code
+                                ></span
+                            ><br />
+                            <span
+                                style="
+                                    color: var(--text-muted);
+                                    font-size: 12px;
+                                "
+                                >→ Existing account found. Returns
+                                <code
+                                    style="
+                                        font-family: var(--font-mono);
+                                        font-size: 11px;
+                                        color: var(--cyan);
+                                    "
+                                    >{ session, access_token, refresh_token,
+                                    user }</code
+                                >.</span
+                            >
+                        </div>
+                    </div>
+                </div>
+
+                <h3>Token Refresh</h3>
+                <div class="flow-box">
+                    <div class="flow-step">
+                        <div class="flow-num">1</div>
+                        <div>
+                            <span
+                                style="
+                                    color: var(--green);
+                                    font-family: var(--font-mono);
+                                    font-size: 13px;
+                                    font-weight: 700;
+                                "
+                                >GET /auth/refresh</span
+                            >
+                            <span
+                                style="
+                                    color: var(--text-muted);
+                                    font-size: 13px;
+                                "
+                            >
+                                — Header: Refresh token</span
+                            ><br />
+                            <span
+                                style="
+                                    color: var(--text-muted);
+                                    font-size: 12px;
+                                "
+                                >→ New access + refresh token pair issued.
+                                Session ID unchanged.</span
+                            >
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ── Token System ──────────────────────────────────────── -->
+            <section class="section" id="tokens">
+                <h2 class="section-title">Token System</h2>
+                <p style="margin-bottom: 16px">
+                    All tokens are <strong>PASETO v4-local</strong> (symmetric
+                    encryption). Each token's payload contains the user's
+                    subject, session ID, purpose discriminant, and expiry
+                    timestamp. Present tokens in the
+                    <code>Authorization: Bearer &lt;token&gt;</code> header.
+                </p>
+
+                <div class="token-grid">
+                    <div class="token-card">
+                        <div
+                            class="token-card-title"
+                            style="color: var(--accent)"
+                        >
+                            Access Token
+                        </div>
+                        <div class="token-meta"><strong>Kind:</strong> 1</div>
+                        <div class="token-meta">
+                            <strong>TTL:</strong> 2 days
+                        </div>
+                        <div class="token-meta">
+                            <strong>Subject:</strong> User ID
+                        </div>
+                        <div class="token-meta" style="margin-top: 6px">
+                            Used on all authenticated endpoints.
+                        </div>
+                    </div>
+                    <div class="token-card">
+                        <div
+                            class="token-card-title"
+                            style="color: var(--green)"
+                        >
+                            Refresh Token
+                        </div>
+                        <div class="token-meta"><strong>Kind:</strong> 2</div>
+                        <div class="token-meta">
+                            <strong>TTL:</strong> 52 days
+                        </div>
+                        <div class="token-meta">
+                            <strong>Subject:</strong> User ID
+                        </div>
+                        <div class="token-meta" style="margin-top: 6px">
+                            Only valid on <code>GET /auth/refresh</code>.
+                        </div>
+                    </div>
+                    <div class="token-card">
+                        <div
+                            class="token-card-title"
+                            style="color: var(--purple)"
+                        >
+                            Setup Token
+                        </div>
+                        <div class="token-meta"><strong>Kind:</strong> 3</div>
+                        <div class="token-meta">
+                            <strong>TTL:</strong> 15 minutes
+                        </div>
+                        <div class="token-meta">
+                            <strong>Subject:</strong> Phone number
+                        </div>
+                        <div class="token-meta" style="margin-top: 6px">
+                            Only valid on <code>POST /auth/setup</code>.
+                        </div>
+                    </div>
+                </div>
+
+                <h3>Token Extraction Errors</h3>
+                <p>
+                    These errors apply to every endpoint that requires a token,
+                    evaluated <em>before</em> handler logic runs:
+                </p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Condition</th>
+                            <th>Status</th>
+                            <th>Message</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>
+                                <code>Authorization</code> header missing or not
+                                UTF-8
+                            </td>
+                            <td><span class="st st-40">401</span></td>
+                            <td><code>unauthorized</code></td>
+                        </tr>
+                        <tr>
+                            <td>
+                                Header present but not prefixed with
+                                <code>Bearer </code>
+                            </td>
+                            <td><span class="st st-40">401</span></td>
+                            <td><code>unauthorized</code></td>
+                        </tr>
+                        <tr>
+                            <td>Token cannot be decrypted / malformed</td>
+                            <td><span class="st st-4">400</span></td>
+                            <td><code>invalid token</code></td>
+                        </tr>
+                        <tr>
+                            <td>Token has expired</td>
+                            <td><span class="st st-40">401</span></td>
+                            <td><code>unauthorized</code></td>
+                        </tr>
+                        <tr>
+                            <td>
+                                Token is the wrong type (e.g., refresh where
+                                access expected)
+                            </td>
+                            <td><span class="st st-40">403</span></td>
+                            <td><code>permission denied</code></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- ══════════════════════════════════════════════════════
+       ENDPOINT: POST /auth/login
+  ═══════════════════════════════════════════════════════ -->
+            <section class="section" id="login">
+                <h2 class="section-title">Authentication Endpoints</h2>
+
+                <div class="endpoint-card">
+                    <div class="endpoint-header">
+                        <span class="method-pill pill-post">POST</span>
+                        <span class="endpoint-path">/auth/login</span>
+                        <span class="endpoint-desc">Send OTP to phone</span>
+                    </div>
+                    <div class="endpoint-body">
+                        <p class="endpoint-summary">
+                            Sends a 6-digit OTP to the given phone number via
+                            the WhatsApp Business API. Always the first step of
+                            any authentication or login flow. The OTP is
+                            <strong>never returned in the response</strong> — it
+                            arrives on WhatsApp only.
+                        </p>
+
+                        <div class="auth-badge no-auth">
+                            🔓 No authentication required
+                        </div>
+
+                        <h3>Request Body</h3>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-lang">JSON</span
+                                ><button
+                                    class="copy-btn"
+                                    onclick="copyCode(this)"
+                                >
+                                    Copy
+                                </button>
+                            </div>
+                            <pre><code>{
+  <span class="t-key">"phone"</span><span class="t-punc">:</span> <span class="t-str">"+254759762268"</span>   <span class="t-comment">// required — E.164 format (starts with +)</span>
+}</code></pre>
+                        </div>
+
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Field</th>
+                                    <th>Type</th>
+                                    <th></th>
+                                    <th>Validation</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>phone</code></td>
+                                    <td><code>string</code></td>
+                                    <td><span class="req">required</span></td>
+                                    <td>
+                                        Must start with <code>+</code> and pass
+                                        E.164 validation. Validated at
+                                        deserialization.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <h3>
+                            Success Response —
+                            <span class="st st-2">200 OK</span>
+                        </h3>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-lang">JSON</span
+                                ><button
+                                    class="copy-btn"
+                                    onclick="copyCode(this)"
+                                >
+                                    Copy
+                                </button>
+                            </div>
+                            <pre><code>{
+  <span class="t-key">"phone"</span><span class="t-punc">:</span>   <span class="t-str">"+254759762268"</span><span class="t-punc">,</span>
+  <span class="t-key">"created"</span><span class="t-punc">:</span> <span class="t-str">"2025-04-26T07:30:00Z"</span><span class="t-punc">,</span>   <span class="t-comment">// when the OTP was generated</span>
+  <span class="t-key">"ttl"</span><span class="t-punc">:</span>     <span class="t-str">"2025-04-26T07:45:00Z"</span>    <span class="t-comment">// created + 15 minutes</span>
+}</code></pre>
+                        </div>
+
+                        <div class="callout callout-warn">
+                            <span class="callout-icon">⚠️</span>
+                            <span
+                                >The OTP <code>code</code> field is annotated
+                                <code>#[serde(skip)]</code> and is never present
+                                in the response. It is delivered exclusively
+                                over WhatsApp.</span
+                            >
+                        </div>
+
+                        <h3>Error Responses</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Status</th>
+                                    <th>Message</th>
+                                    <th>Cause</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><span class="st st-4">400</span></td>
+                                    <td><em>Axum plain-text rejection</em></td>
+                                    <td>
+                                        Body is not valid JSON, or
+                                        <code>Content-Type</code> is missing/not
+                                        <code>application/json</code>.
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><span class="st st-4">422</span></td>
+                                    <td><em>Axum plain-text rejection</em></td>
+                                    <td>
+                                        <code>phone</code> field is missing or
+                                        fails E.164 validation. Note: response
+                                        body is plain text, not JSON.
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><span class="st st-4">429</span></td>
+                                    <td>
+                                        <code
+                                            >too many requests, Please slow
+                                            down</code
+                                        >
+                                    </td>
+                                    <td>
+                                        An OTP was already sent to this phone
+                                        number within the past
+                                        <strong>60 seconds</strong>.
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><span class="st st-5">500</span></td>
+                                    <td><code>internal server error</code></td>
+                                    <td>
+                                        WhatsApp API delivery failed, or
+                                        DynamoDB read/write failed.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <h3>Notes</h3>
+                        <ul>
+                            <li>
+                                Rate limiting is keyed on the
+                                <strong>phone number</strong>, not client IP.
+                                Any client can trigger the limit for a given
+                                number.
+                            </li>
+                            <li>
+                                A new successful call overwrites any previous
+                                OTP — prior codes are immediately invalidated.
+                            </li>
+                            <li>
+                                OTP delivery (WhatsApp send) happens
+                                <em>before</em> the record is persisted to
+                                DynamoDB. A failed DynamoDB write means the user
+                                received a code that cannot be verified.
+                            </li>
+                            <li>
+                                The phone number must be registered on WhatsApp.
+                                There is no SMS fallback.
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- ── POST /auth/verify ────────────────────────────────── -->
+                <div class="endpoint-card" id="verify">
+                    <div class="endpoint-header">
+                        <span class="method-pill pill-post">POST</span>
+                        <span class="endpoint-path">/auth/verify</span>
+                        <span class="endpoint-desc">Validate OTP</span>
+                    </div>
+                    <div class="endpoint-body">
+                        <p class="endpoint-summary">
+                            Validates the OTP received via WhatsApp. The
+                            response shape depends on whether an account exists
+                            for the phone number. For
+                            <strong>new users</strong>, returns a short-lived
+                            Setup token. For <strong>existing users</strong>,
+                            returns a full token pair and session.
+                        </p>
+
+                        <div class="auth-badge no-auth">
+                            🔓 No authentication required
+                        </div>
+
+                        <h3>Request Body</h3>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-lang">JSON</span
+                                ><button
+                                    class="copy-btn"
+                                    onclick="copyCode(this)"
+                                >
+                                    Copy
+                                </button>
+                            </div>
+                            <pre><code>{
+  <span class="t-key">"phone"</span><span class="t-punc">:</span>   <span class="t-str">"+254759762268"</span><span class="t-punc">,</span>   <span class="t-comment">// required — E.164</span>
+  <span class="t-key">"code"</span><span class="t-punc">:</span>    <span class="t-str">"136483"</span><span class="t-punc">,</span>         <span class="t-comment">// required — 6-digit OTP from WhatsApp</span>
+  <span class="t-key">"session"</span><span class="t-punc">:</span> <span class="t-null">null</span><span class="t-punc">,</span>            <span class="t-comment">// optional — 24-char hex ObjectId to reuse</span>
+  <span class="t-key">"device"</span><span class="t-punc">:</span>  <span class="t-str">"Ubuntu Linux, Bruno"</span>  <span class="t-comment">// required — stored on the session</span>
+}</code></pre>
+                        </div>
+
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Field</th>
+                                    <th>Type</th>
+                                    <th></th>
+                                    <th>Description</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>phone</code></td>
+                                    <td><code>string</code></td>
+                                    <td><span class="req">required</span></td>
+                                    <td>E.164 phone number.</td>
+                                </tr>
+                                <tr>
+                                    <td><code>code</code></td>
+                                    <td><code>string</code></td>
+                                    <td><span class="req">required</span></td>
+                                    <td>6-digit OTP received on WhatsApp.</td>
+                                </tr>
+                                <tr>
+                                    <td><code>session</code></td>
+                                    <td><code>string | null</code></td>
+                                    <td><span class="opt">optional</span></td>
+                                    <td>
+                                        24-char hex ObjectId. If provided and
+                                        owned by this user, the session is
+                                        reused.
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><code>device</code></td>
+                                    <td><code>string</code></td>
+                                    <td><span class="req">required</span></td>
+                                    <td>
+                                        Human-readable device label. Ignored for
+                                        new users (no session is created).
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <h3>
+                            Success Response —
+                            <span class="st st-2">200 OK</span> (Existing User)
+                        </h3>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-lang">JSON</span
+                                ><button
+                                    class="copy-btn"
+                                    onclick="copyCode(this)"
+                                >
+                                    Copy
+                                </button>
+                            </div>
+                            <pre><code>{
+  <span class="t-key">"session"</span><span class="t-punc">:</span>       <span class="t-str">"69ed056664bc5d80849a9322"</span><span class="t-punc">,</span>
+  <span class="t-key">"access_token"</span><span class="t-punc">:</span>  <span class="t-str">"v4.local.ukuGtEfqElk6..."</span><span class="t-punc">,</span>   <span class="t-comment">// valid 2 days</span>
+  <span class="t-key">"refresh_token"</span><span class="t-punc">:</span> <span class="t-str">"v4.local.rPWuvV7iMHrS..."</span><span class="t-punc">,</span>  <span class="t-comment">// valid 52 days</span>
+  <span class="t-key">"user"</span><span class="t-punc">:</span> {
+    <span class="t-key">"id"</span><span class="t-punc">:</span>       <span class="t-str">"507f1f77bcf86cd799439011"</span><span class="t-punc">,</span>
+    <span class="t-key">"phone"</span><span class="t-punc">:</span>    <span class="t-str">"+254759762268"</span><span class="t-punc">,</span>
+    <span class="t-key">"name"</span><span class="t-punc">:</span>     <span class="t-str">"Abdihakim Osman"</span><span class="t-punc">,</span>
+    <span class="t-key">"level"</span><span class="t-punc">:</span>    <span class="t-str">"Normal"</span><span class="t-punc">,</span>   <span class="t-comment">// "Normal" | "System" | "Super"</span>
+    <span class="t-key">"status"</span><span class="t-punc">:</span>   <span class="t-str">"Active"</span><span class="t-punc">,</span>   <span class="t-comment">// "Active" | "Invited" | "Blocked" | "Deleted"</span>
+    <span class="t-key">"profiled"</span><span class="t-punc">:</span> <span class="t-bool">true</span><span class="t-punc">,</span>
+    <span class="t-key">"created"</span><span class="t-punc">:</span>  <span class="t-str">"2025-01-15T10:30:00Z"</span>
+  }
+}</code></pre>
+                        </div>
+
+                        <h3>
+                            Success Response —
+                            <span class="st st-2">200 OK</span> (New /
+                            Unregistered User)
+                        </h3>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-lang">JSON</span
+                                ><button
+                                    class="copy-btn"
+                                    onclick="copyCode(this)"
+                                >
+                                    Copy
+                                </button>
+                            </div>
+                            <pre><code>{
+  <span class="t-key">"token"</span><span class="t-punc">:</span> <span class="t-str">"v4.local.zXZ3HE1F7aR5..."</span>   <span class="t-comment">// Setup token — valid 15 minutes only</span>
+}</code></pre>
+                        </div>
+
+                        <div class="callout callout-info">
+                            <span class="callout-icon">ℹ️</span>
+                            <span
+                                >The response is <strong>untagged</strong> —
+                                there is no <code>type</code> discriminant
+                                field. Detect the variant by shape:
+                                <code>token</code> key → new user;
+                                <code>session</code> +
+                                <code>access_token</code> keys → existing
+                                user.</span
+                            >
+                        </div>
+
+                        <h3>Error Responses</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Status</th>
+                                    <th>Message</th>
+                                    <th>Cause</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><span class="st st-4">400</span></td>
+                                    <td>
+                                        <code>invalid verification code</code>
+                                    </td>
+                                    <td>
+                                        Submitted OTP does not match the stored
+                                        code.
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><span class="st st-4">400</span></td>
+                                    <td>
+                                        <code>invalid phone number...</code>
+                                    </td>
+                                    <td>
+                                        <code>phone</code> fails E.164
+                                        validation.
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><span class="st st-4">400</span></td>
+                                    <td><code>invalid id</code></td>
+                                    <td>
+                                        <code>session</code> is not a valid
+                                        24-hex ObjectId.
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><span class="st st-40">403</span></td>
+                                    <td><code>permission denied</code></td>
+                                    <td>
+                                        User account is
+                                        <strong>Blocked</strong>.
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><span class="st st-4">404</span></td>
+                                    <td>
+                                        <code>verification code not found</code>
+                                    </td>
+                                    <td>
+                                        <code>POST /auth/login</code> was not
+                                        called first, or the record was evicted
+                                        from DynamoDB.
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><span class="st st-5">500</span></td>
+                                    <td><code>internal server error</code></td>
+                                    <td>Any DynamoDB operation failed.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <h3>Session Reuse</h3>
+                        <p>
+                            When <code>session</code> is provided, the server
+                            fetches it and checks ownership. If the session
+                            exists and belongs to the authenticated user, its ID
+                            is reused (TTL and refresh token are reset).
+                            Otherwise, a new session is generated. Always read
+                            <code>session</code> from the response.
+                        </p>
+
+                        <h3>Notes</h3>
+                        <ul>
+                            <li>
+                                Blocked users are checked twice — before and
+                                after OTP validation — to close a race window.
+                            </li>
+                            <li>
+                                The verification record is
+                                <strong>not deleted</strong> after success. The
+                                same code can be replayed until DynamoDB TTL
+                                evicts it (up to 48 hours after expiry).
+                            </li>
+                            <li>
+                                For new users, <code>device</code> and
+                                <code>session</code> are silently discarded — no
+                                session record is created.
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- ── POST /auth/setup ─────────────────────────────────── -->
+                <div class="endpoint-card" id="setup">
+                    <div class="endpoint-header">
+                        <span class="method-pill pill-post">POST</span>
+                        <span class="endpoint-path">/auth/setup</span>
+                        <span class="endpoint-desc"
+                            >Complete account registration</span
+                        >
+                    </div>
+                    <div class="endpoint-body">
+                        <p class="endpoint-summary">
+                            Completes account registration for a newly verified
+                            phone number. Requires the
+                            <strong>Setup token</strong> returned by
+                            <code>POST /auth/verify</code> when the phone was
+                            unrecognized. On success, creates the user record
+                            and opens a new session.
+                        </p>
+
+                        <div class="auth-badge">
+                            🔑 Requires Setup token (KIND = 3, TTL = 15 min)
+                        </div>
+
+                        <h3>Request</h3>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-lang">HTTP</span
+                                ><button
+                                    class="copy-btn"
+                                    onclick="copyCode(this)"
+                                >
+                                    Copy
+                                </button>
+                            </div>
+                            <pre><code><span class="t-method">POST</span> <span class="t-path">/auth/setup</span>
+<span class="t-header">Authorization:</span> <span class="t-value">Bearer v4.local.zXZ3HE1F7aR5...</span>
+<span class="t-header">Content-Type:</span>  <span class="t-value">application/json</span>
+
+{
+  <span class="t-key">"name"</span><span class="t-punc">:</span>   <span class="t-str">"Abdihakim Osman"</span><span class="t-punc">,</span>   <span class="t-comment">// required — display name</span>
+  <span class="t-key">"device"</span><span class="t-punc">:</span> <span class="t-str">"Ubuntu Linux, Bruno"</span>   <span class="t-comment">// required — device label</span>
+}</code></pre>
+                        </div>
+
+                        <h3>
+                            Success Response —
+                            <span class="st st-2">200 OK</span>
+                        </h3>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-lang">JSON</span
+                                ><button
+                                    class="copy-btn"
+                                    onclick="copyCode(this)"
+                                >
+                                    Copy
+                                </button>
+                            </div>
+                            <pre><code>{
+  <span class="t-key">"session"</span><span class="t-punc">:</span>       <span class="t-str">"69ed056664bc5d80849a9322"</span><span class="t-punc">,</span>
+  <span class="t-key">"access_token"</span><span class="t-punc">:</span>  <span class="t-str">"v4.local.ukuGtEfqElk6..."</span><span class="t-punc">,</span>
+  <span class="t-key">"refresh_token"</span><span class="t-punc">:</span> <span class="t-str">"v4.local.rPWuvV7iMHrS..."</span><span class="t-punc">,</span>
+  <span class="t-key">"user"</span><span class="t-punc">:</span> {
+    <span class="t-key">"id"</span><span class="t-punc">:</span>       <span class="t-str">"507f1f77bcf86cd799439011"</span><span class="t-punc">,</span>
+    <span class="t-key">"phone"</span><span class="t-punc">:</span>    <span class="t-str">"+254759762268"</span><span class="t-punc">,</span>
+    <span class="t-key">"name"</span><span class="t-punc">:</span>     <span class="t-str">"Abdihakim Osman"</span><span class="t-punc">,</span>
+    <span class="t-key">"level"</span><span class="t-punc">:</span>    <span class="t-str">"Normal"</span><span class="t-punc">,</span>
+    <span class="t-key">"status"</span><span class="t-punc">:</span>   <span class="t-str">"Active"</span><span class="t-punc">,</span>
+    <span class="t-key">"profiled"</span><span class="t-punc">:</span> <span class="t-bool">false</span><span class="t-punc">,</span>   <span class="t-comment">// always false for new accounts</span>
+    <span class="t-key">"created"</span><span class="t-punc">:</span>  <span class="t-str">"2025-04-26T07:55:00Z"</span>
+  }
+}</code></pre>
+                        </div>
+
+                        <h3>Error Responses</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Status</th>
+                                    <th>Message</th>
+                                    <th>Cause</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><span class="st st-4">400</span></td>
+                                    <td><code>invalid token</code></td>
+                                    <td>
+                                        Bearer token cannot be decrypted or is
+                                        malformed.
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><span class="st st-40">401</span></td>
+                                    <td><code>unauthorized</code></td>
+                                    <td>
+                                        Header missing, wrong prefix, or Setup
+                                        token is expired (> 15 min).
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><span class="st st-40">403</span></td>
+                                    <td><code>permission denied</code></td>
+                                    <td>
+                                        Token is an Access or Refresh token
+                                        (wrong type). Also: user is Blocked.
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><span class="st st-4">422</span></td>
+                                    <td><em>Axum plain-text rejection</em></td>
+                                    <td>
+                                        <code>name</code> or
+                                        <code>device</code> missing from body.
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><span class="st st-5">500</span></td>
+                                    <td><code>internal server error</code></td>
+                                    <td>DynamoDB read or write failed.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <h3>Notes</h3>
+                        <ul>
+                            <li>
+                                The phone comes <strong>from the token</strong>,
+                                not the body. The body only sets the display
+                                name and device label.
+                            </li>
+                            <li>
+                                If the phone already has a user record (e.g.,
+                                called twice), the user is
+                                <strong>renamed</strong> and a new session is
+                                created. Not idempotent for existing users.
+                            </li>
+                            <li>
+                                For blocked users, the rename is
+                                <strong>committed to DynamoDB</strong> before
+                                the <code>403</code> is returned — a side effect
+                                that cannot be rolled back.
+                            </li>
+                            <li>
+                                New users always receive
+                                <code>level: "Normal"</code>,
+                                <code>status: "Active"</code>, and
+                                <code>profiled: false</code>.
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- ── GET /auth/refresh ────────────────────────────────── -->
+                <div class="endpoint-card" id="refresh">
+                    <div class="endpoint-header">
+                        <span class="method-pill pill-get">GET</span>
+                        <span class="endpoint-path">/auth/refresh</span>
+                        <span class="endpoint-desc">Rotate token pair</span>
+                    </div>
+                    <div class="endpoint-body">
+                        <p class="endpoint-summary">
+                            Exchanges a valid Refresh token for a fresh Access +
+                            Refresh token pair. The session ID does not change.
+                            No request body needed — all required data is inside
+                            the encrypted token.
+                        </p>
+
+                        <div class="auth-badge">
+                            🔑 Requires Refresh token (KIND = 2, TTL = 52 days)
+                        </div>
+
+                        <h3>Request</h3>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-lang">HTTP</span
+                                ><button
+                                    class="copy-btn"
+                                    onclick="copyCode(this)"
+                                >
+                                    Copy
+                                </button>
+                            </div>
+                            <pre><code><span class="t-method">GET</span> <span class="t-path">/auth/refresh</span>
+<span class="t-header">Authorization:</span> <span class="t-value">Bearer v4.local.rPWuvV7iMHrS...</span></code></pre>
+                        </div>
+
+                        <h3>
+                            Success Response —
+                            <span class="st st-2">200 OK</span>
+                        </h3>
+                        <p>
+                            Same shape as <code>POST /auth/setup</code>. Both
+                            <code>access_token</code> and
+                            <code>refresh_token</code> are freshly generated.
+                            <code>session</code> is always the same ID that was
+                            in the Refresh token.
+                        </p>
+
+                        <h3>Error Responses</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Status</th>
+                                    <th>Message</th>
+                                    <th>Cause</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><span class="st st-4">400</span></td>
+                                    <td><code>invalid token</code></td>
+                                    <td>
+                                        Token cannot be decrypted or is
+                                        malformed.
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><span class="st st-40">401</span></td>
+                                    <td><code>unauthorized</code></td>
+                                    <td>
+                                        Header missing, wrong prefix, or Refresh
+                                        token is expired (> 52 days).
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><span class="st st-40">403</span></td>
+                                    <td><code>permission denied</code></td>
+                                    <td>
+                                        Token is wrong type; or user is Blocked;
+                                        or the
+                                        <strong
+                                            >session document no longer
+                                            exists</strong
+                                        >
+                                        (was deleted via
+                                        <code>DELETE /sessions/{id}</code>).
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><span class="st st-4">404</span></td>
+                                    <td><code>user not found</code></td>
+                                    <td>
+                                        User record was deleted from DynamoDB
+                                        after token issuance.
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><span class="st st-5">500</span></td>
+                                    <td><code>internal server error</code></td>
+                                    <td>DynamoDB read or write failed.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <h3>Notes</h3>
+                        <ul>
+                            <li>
+                                <strong>401</strong> = session expired (token
+                                TTL exceeded) → user must re-authenticate from
+                                login.
+                            </li>
+                            <li>
+                                <strong>403</strong> (missing session) = session
+                                was revoked → clear credentials, redirect to
+                                login.
+                            </li>
+                            <li>
+                                <strong>404</strong> = account deleted → do not
+                                retry.
+                            </li>
+                            <li>
+                                Old refresh tokens technically remain usable
+                                until their 52-day PASETO expiry because the
+                                endpoint does not validate that the token ID
+                                matches <code>session.refresh</code>. Always
+                                replace the stored refresh token with the one
+                                from the response.
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ══════════════════════════════════════════════════════
+       USER ENDPOINTS
+  ═══════════════════════════════════════════════════════ -->
+            <section class="section" id="get-user">
+                <h2 class="section-title">User Endpoints</h2>
+
+                <div class="endpoint-card">
+                    <div class="endpoint-header">
+                        <span class="method-pill pill-get">GET</span>
+                        <span class="endpoint-path">/user</span>
+                        <span class="endpoint-desc">Get current user</span>
+                    </div>
+                    <div class="endpoint-body">
+                        <p class="endpoint-summary">
+                            Returns the full profile of the currently
+                            authenticated user.
+                        </p>
+
+                        <div class="auth-badge">
+                            🔑 Requires Access token (KIND = 1)
+                        </div>
+
+                        <h3>Request</h3>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-lang">HTTP</span
+                                ><button
+                                    class="copy-btn"
+                                    onclick="copyCode(this)"
+                                >
+                                    Copy
+                                </button>
+                            </div>
+                            <pre><code><span class="t-method">GET</span> <span class="t-path">/user</span>
+<span class="t-header">Authorization:</span> <span class="t-value">Bearer v4.local.ukuGtEfqElk6...</span></code></pre>
+                        </div>
+
+                        <h3>
+                            Success Response —
+                            <span class="st st-2">200 OK</span>
+                        </h3>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-lang">JSON</span
+                                ><button
+                                    class="copy-btn"
+                                    onclick="copyCode(this)"
+                                >
+                                    Copy
+                                </button>
+                            </div>
+                            <pre><code>{
+  <span class="t-key">"id"</span><span class="t-punc">:</span>       <span class="t-str">"507f1f77bcf86cd799439011"</span><span class="t-punc">,</span>   <span class="t-comment">// 24-char hex ObjectId</span>
+  <span class="t-key">"phone"</span><span class="t-punc">:</span>    <span class="t-str">"+254759762268"</span><span class="t-punc">,</span>            <span class="t-comment">// E.164</span>
+  <span class="t-key">"name"</span><span class="t-punc">:</span>     <span class="t-str">"Abdihakim Osman"</span><span class="t-punc">,</span>
+  <span class="t-key">"level"</span><span class="t-punc">:</span>    <span class="t-str">"Normal"</span><span class="t-punc">,</span>                <span class="t-comment">// "Normal" | "System" | "Super"</span>
+  <span class="t-key">"status"</span><span class="t-punc">:</span>   <span class="t-str">"Active"</span><span class="t-punc">,</span>                <span class="t-comment">// "Active" | "Invited" | "Blocked" | "Deleted"</span>
+  <span class="t-key">"profiled"</span><span class="t-punc">:</span> <span class="t-bool">true</span><span class="t-punc">,</span>
+  <span class="t-key">"created"</span><span class="t-punc">:</span>  <span class="t-str">"2025-01-15T10:30:00Z"</span>      <span class="t-comment">// RFC 3339 UTC, second precision</span>
+}</code></pre>
+                        </div>
+
+                        <h3>Error Responses</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Status</th>
+                                    <th>Message</th>
+                                    <th>Cause</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><span class="st st-40">401</span></td>
+                                    <td><code>unauthorized</code></td>
+                                    <td>
+                                        Header missing, wrong prefix, or token
+                                        expired.
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><span class="st st-40">403</span></td>
+                                    <td><code>permission denied</code></td>
+                                    <td>Token is a Refresh or Setup token.</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="st st-4">404</span></td>
+                                    <td><code>user not found</code></td>
+                                    <td>
+                                        User record does not exist (account
+                                        deleted after token issuance).
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><span class="st st-5">500</span></td>
+                                    <td><code>internal server error</code></td>
+                                    <td>
+                                        DynamoDB read failed or record is
+                                        corrupt.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <div class="callout callout-warn">
+                            <span class="callout-icon">⚠️</span>
+                            <span
+                                >A
+                                <strong
+                                    >200 response does not guarantee the user is
+                                    active</strong
+                                >. The <code>status</code> field may be
+                                <code>"Blocked"</code> or
+                                <code>"Deleted"</code>. Always inspect the
+                                <code>status</code> field in your application
+                                logic.</span
+                            >
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── PATCH /user/rename ─────────────────────────────── -->
+                <div class="endpoint-card" id="rename">
+                    <div class="endpoint-header">
+                        <span class="method-pill pill-patch">PATCH</span>
+                        <span class="endpoint-path">/user/rename</span>
+                        <span class="endpoint-desc">Update display name</span>
+                    </div>
+                    <div class="endpoint-body">
+                        <p class="endpoint-summary">
+                            Updates the authenticated user's display name and
+                            returns the full updated user record. No need to
+                            call <code>GET /user</code> afterwards.
+                        </p>
+
+                        <div class="auth-badge">
+                            🔑 Requires Access token (KIND = 1)
+                        </div>
+
+                        <h3>Request</h3>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-lang">HTTP</span
+                                ><button
+                                    class="copy-btn"
+                                    onclick="copyCode(this)"
+                                >
+                                    Copy
+                                </button>
+                            </div>
+                            <pre><code><span class="t-method">PATCH</span> <span class="t-path">/user/rename</span>
+<span class="t-header">Authorization:</span> <span class="t-value">Bearer v4.local.ukuGtEfqElk6...</span>
+<span class="t-header">Content-Type:</span>  <span class="t-value">application/json</span>
+
+{
+  <span class="t-key">"name"</span><span class="t-punc">:</span> <span class="t-str">"Alagha"</span>   <span class="t-comment">// required — new display name</span>
+}</code></pre>
+                        </div>
+
+                        <h3>
+                            Success Response —
+                            <span class="st st-2">200 OK</span>
+                        </h3>
+                        <p>
+                            Full updated <code>User</code> object (same shape as
+                            <code>GET /user</code>) with
+                            <code>name</code> reflecting the new value.
+                        </p>
+
+                        <h3>Error Responses</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Status</th>
+                                    <th>Message</th>
+                                    <th>Cause</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><span class="st st-40">401</span></td>
+                                    <td><code>unauthorized</code></td>
+                                    <td>
+                                        Header missing, wrong prefix, or token
+                                        expired.
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><span class="st st-40">403</span></td>
+                                    <td><code>permission denied</code></td>
+                                    <td>Token is a Refresh or Setup token.</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="st st-4">415</span></td>
+                                    <td><em>Axum plain-text rejection</em></td>
+                                    <td>
+                                        <code>Content-Type</code> is not
+                                        <code>application/json</code>.
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><span class="st st-4">422</span></td>
+                                    <td><em>Axum plain-text rejection</em></td>
+                                    <td>
+                                        <code>name</code> field is missing or
+                                        not a JSON string.
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><span class="st st-5">500</span></td>
+                                    <td><code>internal server error</code></td>
+                                    <td>DynamoDB update failed.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <h3>Notes</h3>
+                        <ul>
+                            <li>
+                                There is no duplicate-name check — sending the
+                                current name writes to DynamoDB and returns
+                                <code>200</code>.
+                            </li>
+                            <li>
+                                <strong>No name validation</strong> at the API
+                                layer — empty strings and arbitrarily long names
+                                are accepted. Enforce limits client-side.
+                            </li>
+                            <li>
+                                DynamoDB's <code>UpdateItem</code> is an upsert.
+                                If the user record was deleted, a partial ghost
+                                record will be created, causing subsequent reads
+                                to fail with <code>500</code>.
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- ── POST /user/change-phone ────────────────────────── -->
+                <div class="endpoint-card" id="change-phone">
+                    <div class="endpoint-header">
+                        <span class="method-pill pill-post">POST</span>
+                        <span class="endpoint-path">/user/change-phone</span>
+                        <span class="endpoint-desc">Initiate phone change</span>
+                    </div>
+                    <div class="endpoint-body">
+                        <p class="endpoint-summary">
+                            Initiates a phone number change by sending a 6-digit
+                            OTP to the <em>new</em> phone number via WhatsApp.
+                            The change is not committed until confirmed via
+                            <code>PATCH /user/confirm-change-phone</code>.
+                        </p>
+
+                        <div class="auth-badge">
+                            🔑 Requires Access token (KIND = 1)
+                        </div>
+
+                        <h3>Request</h3>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-lang">HTTP</span
+                                ><button
+                                    class="copy-btn"
+                                    onclick="copyCode(this)"
+                                >
+                                    Copy
+                                </button>
+                            </div>
+                            <pre><code><span class="t-method">POST</span> <span class="t-path">/user/change-phone</span>
+<span class="t-header">Authorization:</span> <span class="t-value">Bearer v4.local.ukuGtEfqElk6...</span>
+<span class="t-header">Content-Type:</span>  <span class="t-value">application/json</span>
+
+{
+  <span class="t-key">"phone"</span><span class="t-punc">:</span> <span class="t-str">"+254759766444"</span>   <span class="t-comment">// required — the NEW phone number (E.164)</span>
+}</code></pre>
+                        </div>
+
+                        <h3>
+                            Success Response —
+                            <span class="st st-2">200 OK</span>
+                        </h3>
+                        <p>
+                            Same shape as <code>POST /auth/login</code>. The OTP
+                            code is not in the response.
+                        </p>
+
+                        <h3>Error Responses</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Status</th>
+                                    <th>Message</th>
+                                    <th>Cause</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><span class="st st-4">400</span></td>
+                                    <td><code>nothing new to update</code></td>
+                                    <td>
+                                        Submitted phone is the same as the
+                                        user's current phone.
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><span class="st st-4">400</span></td>
+                                    <td>
+                                        <code>invalid phone number...</code>
+                                    </td>
+                                    <td>Phone fails E.164 validation.</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="st st-40">401</span></td>
+                                    <td><code>unauthorized</code></td>
+                                    <td>
+                                        Header missing, wrong prefix, or token
+                                        expired.
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><span class="st st-40">403</span></td>
+                                    <td><code>permission denied</code></td>
+                                    <td>Token is wrong type.</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="st st-4">404</span></td>
+                                    <td><code>user not found</code></td>
+                                    <td>User record does not exist.</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="st st-4">429</span></td>
+                                    <td>
+                                        <code
+                                            >too many requests, Please slow
+                                            down</code
+                                        >
+                                    </td>
+                                    <td>
+                                        OTP already sent to this target phone
+                                        within the past 60 seconds.
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><span class="st st-5">500</span></td>
+                                    <td><code>internal server error</code></td>
+                                    <td>
+                                        WhatsApp delivery failed or DynamoDB
+                                        write failed.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <h3>Notes</h3>
+                        <ul>
+                            <li>
+                                Rate limiting is keyed on the
+                                <strong>target phone number</strong>, not the
+                                user's ID.
+                            </li>
+                            <li>
+                                The <code>ttl</code> in the response is
+                                informational — the confirm endpoint does
+                                <em>not</em> enforce it at the application
+                                level.
+                            </li>
+                            <li>
+                                The new phone number is not reserved during the
+                                pending window; another user could register with
+                                it.
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- ── PATCH /user/confirm-change-phone ──────────────── -->
+                <div class="endpoint-card" id="confirm-phone">
+                    <div class="endpoint-header">
+                        <span class="method-pill pill-patch">PATCH</span>
+                        <span class="endpoint-path"
+                            >/user/confirm-change-phone</span
+                        >
+                        <span class="endpoint-desc">Confirm phone change</span>
+                    </div>
+                    <div class="endpoint-body">
+                        <p class="endpoint-summary">
+                            Validates the OTP sent to the new phone number and
+                            commits the change to the user's record.
+                        </p>
+
+                        <div class="auth-badge">
+                            🔑 Requires Access token (KIND = 1)
+                        </div>
+
+                        <h3>Request</h3>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-lang">HTTP</span
+                                ><button
+                                    class="copy-btn"
+                                    onclick="copyCode(this)"
+                                >
+                                    Copy
+                                </button>
+                            </div>
+                            <pre><code><span class="t-method">PATCH</span> <span class="t-path">/user/confirm-change-phone</span>
+<span class="t-header">Authorization:</span> <span class="t-value">Bearer v4.local.ukuGtEfqElk6...</span>
+<span class="t-header">Content-Type:</span>  <span class="t-value">application/json</span>
+
+{
+  <span class="t-key">"phone"</span><span class="t-punc">:</span> <span class="t-str">"+254759766444"</span><span class="t-punc">,</span>   <span class="t-comment">// required — the NEW phone number (same as change-phone)</span>
+  <span class="t-key">"code"</span><span class="t-punc">:</span>  <span class="t-str">"861877"</span>            <span class="t-comment">// required — 6-digit OTP as string (leading zeros matter)</span>
+}</code></pre>
+                        </div>
+
+                        <h3>
+                            Success Response —
+                            <span class="st st-2">200 OK</span>
+                        </h3>
+                        <p>
+                            Full updated <code>User</code> object with
+                            <code>phone</code> reflecting the new number.
+                        </p>
+
+                        <h3>Error Responses</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Status</th>
+                                    <th>Message</th>
+                                    <th>Cause</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><span class="st st-4">400</span></td>
+                                    <td>
+                                        <code>invalid verification code</code>
+                                    </td>
+                                    <td>OTP does not match the stored code.</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="st st-40">401</span></td>
+                                    <td><code>unauthorized</code></td>
+                                    <td>
+                                        Header missing, wrong prefix, or token
+                                        expired.
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><span class="st st-40">403</span></td>
+                                    <td><code>permission denied</code></td>
+                                    <td>Token is wrong type.</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="st st-4">404</span></td>
+                                    <td>
+                                        <code>verification code not found</code>
+                                    </td>
+                                    <td>
+                                        <code>change-phone</code> was not called
+                                        first, or DynamoDB TTL evicted the
+                                        record.
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><span class="st st-4">404</span></td>
+                                    <td><code>user not found</code></td>
+                                    <td>User record deleted between calls.</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="st st-5">500</span></td>
+                                    <td><code>internal server error</code></td>
+                                    <td>DynamoDB read or write failed.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <h3>Notes</h3>
+                        <ul>
+                            <li>
+                                The user identity comes from the
+                                <strong>token</strong>, not the body. Any user
+                                with a valid access token and a valid OTP for a
+                                phone can confirm a change to that phone.
+                            </li>
+                            <li>
+                                The verification record is
+                                <strong>not deleted</strong> after success — the
+                                same code can be replayed.
+                            </li>
+                            <li>
+                                <strong>No phone uniqueness enforcement</strong>
+                                — two users can end up with the same phone
+                                number.
+                            </li>
+                            <li>
+                                <strong>No brute-force protection</strong> —
+                                failed code attempts are not rate-limited or
+                                counted.
+                            </li>
+                            <li>
+                                The access token must remain valid for the
+                                entire two-step flow. Use
+                                <code>GET /auth/refresh</code> if needed before
+                                calling this endpoint.
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ══════════════════════════════════════════════════════
+       SESSION ENDPOINTS
+  ═══════════════════════════════════════════════════════ -->
+            <section class="section" id="list-sessions">
+                <h2 class="section-title">Session Endpoints</h2>
+
+                <div class="endpoint-card">
+                    <div class="endpoint-header">
+                        <span class="method-pill pill-get">GET</span>
+                        <span class="endpoint-path">/sessions</span>
+                        <span class="endpoint-desc">List all sessions</span>
+                    </div>
+                    <div class="endpoint-body">
+                        <p class="endpoint-summary">
+                            Returns all sessions belonging to the authenticated
+                            user. An empty array is a valid, non-error response.
+                        </p>
+
+                        <div class="auth-badge">
+                            🔑 Requires Access token (KIND = 1)
+                        </div>
+
+                        <h3>Request</h3>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-lang">HTTP</span
+                                ><button
+                                    class="copy-btn"
+                                    onclick="copyCode(this)"
+                                >
+                                    Copy
+                                </button>
+                            </div>
+                            <pre><code><span class="t-method">GET</span> <span class="t-path">/sessions</span>
+<span class="t-header">Authorization:</span> <span class="t-value">Bearer v4.local.ukuGtEfqElk6...</span></code></pre>
+                        </div>
+
+                        <h3>
+                            Success Response —
+                            <span class="st st-2">200 OK</span>
+                        </h3>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-lang">JSON</span
+                                ><button
+                                    class="copy-btn"
+                                    onclick="copyCode(this)"
+                                >
+                                    Copy
+                                </button>
+                            </div>
+                            <pre><code>[
+  {
+    <span class="t-key">"id"</span><span class="t-punc">:</span>      <span class="t-str">"69ed056664bc5d80849a9322"</span><span class="t-punc">,</span>   <span class="t-comment">// use this to delete the session</span>
+    <span class="t-key">"user"</span><span class="t-punc">:</span>    <span class="t-str">"507f1f77bcf86cd799439011"</span><span class="t-punc">,</span>
+    <span class="t-key">"refresh"</span><span class="t-punc">:</span> <span class="t-str">"507f1f77bcf86cd799439013"</span><span class="t-punc">,</span>   <span class="t-comment">// ID of last issued refresh token — treat as opaque</span>
+    <span class="t-key">"device"</span><span class="t-punc">:</span>  <span class="t-str">"Ubuntu Linux, Bruno"</span><span class="t-punc">,</span>
+    <span class="t-key">"created"</span><span class="t-punc">:</span> <span class="t-str">"2025-04-01T10:00:00Z"</span><span class="t-punc">,</span>
+    <span class="t-key">"ttl"</span><span class="t-punc">:</span>     <span class="t-str">"2025-07-10T10:00:00Z"</span>       <span class="t-comment">// created + 100 days — informational only</span>
+  }
+]</code></pre>
+                        </div>
+
+                        <h3>Error Responses</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Status</th>
+                                    <th>Message</th>
+                                    <th>Cause</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><span class="st st-40">401</span></td>
+                                    <td><code>unauthorized</code></td>
+                                    <td>
+                                        Header missing, wrong prefix, or token
+                                        expired.
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><span class="st st-40">403</span></td>
+                                    <td><code>permission denied</code></td>
+                                    <td>Token is a Refresh or Setup token.</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="st st-5">500</span></td>
+                                    <td><code>internal server error</code></td>
+                                    <td>DynamoDB query failed.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <h3>Notes</h3>
+                        <ul>
+                            <li>
+                                The response is a
+                                <strong>top-level JSON array</strong>, not
+                                <code>{ "sessions": [...] }</code>.
+                            </li>
+                            <li>
+                                The session used to authenticate
+                                <em>this request</em> is included in the
+                                results.
+                            </li>
+                            <li>
+                                Sessions past their <code>ttl</code> may still
+                                appear — DynamoDB TTL cleanup is eventually
+                                consistent (up to 48 hours delay). Do not use
+                                <code>ttl</code> as a real-time expiry signal.
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- ── DELETE /sessions/{id} ──────────────────────────── -->
+                <div class="endpoint-card" id="delete-session">
+                    <div class="endpoint-header">
+                        <span class="method-pill pill-delete">DELETE</span>
+                        <span class="endpoint-path">/sessions/{id}</span>
+                        <span class="endpoint-desc">Revoke a session</span>
+                    </div>
+                    <div class="endpoint-body">
+                        <p class="endpoint-summary">
+                            Deletes a specific session, immediately preventing
+                            any future token refresh for it. This is the "log
+                            out of a device" mechanism. The operation is
+                            idempotent — deleting a non-existent session returns
+                            <code>200</code>.
+                        </p>
+
+                        <div class="auth-badge">
+                            🔑 Requires Access token (KIND = 1)
+                        </div>
+
+                        <h3>Request</h3>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-lang">HTTP</span
+                                ><button
+                                    class="copy-btn"
+                                    onclick="copyCode(this)"
+                                >
+                                    Copy
+                                </button>
+                            </div>
+                            <pre><code><span class="t-method">DELETE</span> <span class="t-path">/sessions/69ed056664bc5d80849a9322</span>
+<span class="t-header">Authorization:</span> <span class="t-value">Bearer v4.local.ukuGtEfqElk6...</span></code></pre>
+                        </div>
+
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Path Param</th>
+                                    <th>Type</th>
+                                    <th>Description</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>id</code></td>
+                                    <td><code>string</code></td>
+                                    <td>
+                                        24-char hex MongoDB ObjectId of the
+                                        session to delete (use
+                                        <code>id</code> field from
+                                        <code>GET /sessions</code>).
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <h3>
+                            Success Response —
+                            <span class="st st-2">200 OK</span>
+                        </h3>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-lang">JSON</span
+                                ><button
+                                    class="copy-btn"
+                                    onclick="copyCode(this)"
+                                >
+                                    Copy
+                                </button>
+                            </div>
+                            <pre><code><span class="t-null">null</span>   <span class="t-comment">// returned whether the session was deleted or did not exist</span></code></pre>
+                        </div>
+
+                        <h3>Error Responses</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Status</th>
+                                    <th>Message</th>
+                                    <th>Cause</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><span class="st st-4">400</span></td>
+                                    <td><code>invalid id</code></td>
+                                    <td>
+                                        Path segment <code>{id}</code> is not a
+                                        valid 24-char hex ObjectId.
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><span class="st st-40">401</span></td>
+                                    <td><code>unauthorized</code></td>
+                                    <td>
+                                        Header missing, wrong prefix, or token
+                                        expired.
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><span class="st st-40">403</span></td>
+                                    <td><code>permission denied</code></td>
+                                    <td>
+                                        Token is wrong type; or session exists
+                                        but belongs to a
+                                        <strong>different user</strong>.
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><span class="st st-5">500</span></td>
+                                    <td><code>internal server error</code></td>
+                                    <td>DynamoDB read or write failed.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <div class="callout callout-danger">
+                            <span class="callout-icon">🚨</span>
+                            <span
+                                ><strong
+                                    >Deleting your own active session:</strong
+                                >
+                                The delete succeeds immediately. Your current
+                                access token remains valid until its 2-day
+                                PASETO expiry, but all subsequent
+                                <code>GET /auth/refresh</code> calls will return
+                                <code>403</code>. Discard both tokens after
+                                deleting your own session.</span
+                            >
+                        </div>
+
+                        <h3>Notes</h3>
+                        <ul>
+                            <li>
+                                <strong>403</strong> (ownership mismatch) only
+                                fires when the session <em>exists</em> and
+                                belongs to another user. A missing session ID
+                                always returns <code>200</code>.
+                            </li>
+                            <li>
+                                The <code>{id}</code> in the URL is the
+                                session's
+                                <strong>own <code>id</code> field</strong> — not
+                                the <code>refresh</code> field also visible in
+                                <code>GET /sessions</code>.
+                            </li>
+                            <li>
+                                The operation makes two DynamoDB calls: a
+                                <code>GetItem</code> (ownership check) then a
+                                <code>DeleteItem</code>.
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ══════════════════════════════════════════════════════
+       HEALTH
+  ═══════════════════════════════════════════════════════ -->
+            <section class="section" id="health">
+                <h2 class="section-title">Health Check</h2>
+
+                <div class="endpoint-card">
+                    <div class="endpoint-header">
+                        <span class="method-pill pill-get">GET</span>
+                        <span class="endpoint-path">/health</span>
+                        <span class="endpoint-desc"
+                            >Service liveness check</span
+                        >
+                    </div>
+                    <div class="endpoint-body">
+                        <p class="endpoint-summary">
+                            Returns a static <code>200 OK</code> confirming the
+                            Lambda function is running. No authentication
+                            required.
+                        </p>
+
+                        <h3>
+                            Success Response —
+                            <span class="st st-2">200 OK</span>
+                        </h3>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-lang">JSON</span
+                                ><button
+                                    class="copy-btn"
+                                    onclick="copyCode(this)"
+                                >
+                                    Copy
+                                </button>
+                            </div>
+                            <pre><code>{ <span class="t-key">"status"</span><span class="t-punc">:</span> <span class="t-str">"Ok"</span> }</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ══════════════════════════════════════════════════════
+       ERROR REFERENCE
+  ═══════════════════════════════════════════════════════ -->
+            <section class="section" id="errors">
+                <h2 class="section-title">Error Reference</h2>
+                <p style="margin-bottom: 16px">
+                    All service-layer errors return a JSON body
+                    <code>{ "message": "..." }</code>. Errors from Axum's
+                    extractor layer (JSON parse failures, wrong
+                    <code>Content-Type</code>, missing fields) return
+                    <strong>plain-text</strong> bodies and bypass this envelope.
+                </p>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Status</th>
+                            <th>Message</th>
+                            <th>Variant</th>
+                            <th>Trigger</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="st st-4">400</span></td>
+                            <td><code>verification code not found</code></td>
+                            <td><code>VerificationCodeNotFound</code></td>
+                            <td>
+                                No OTP record in DynamoDB for the given phone
+                                (also returned as 404 in some paths).
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><span class="st st-4">400</span></td>
+                            <td><code>invalid verification code</code></td>
+                            <td><code>InvalidVerificationCode</code></td>
+                            <td>OTP code does not match the stored value.</td>
+                        </tr>
+                        <tr>
+                            <td><span class="st st-4">400</span></td>
+                            <td>
+                                <code
+                                    >invalid phone number. Make sure to include
+                                    country code</code
+                                >
+                            </td>
+                            <td><code>InvalidPhoneNumber</code></td>
+                            <td>
+                                Phone fails E.164 validation (no
+                                <code>+</code> prefix, or invalid structure).
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><span class="st st-4">400</span></td>
+                            <td><code>invalid id</code></td>
+                            <td><code>InvalidId</code></td>
+                            <td>
+                                A path or body ID is not a valid 24-char hex
+                                MongoDB ObjectId.
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><span class="st st-4">400</span></td>
+                            <td><code>invalid token</code></td>
+                            <td><code>InvalidToken</code></td>
+                            <td>
+                                PASETO token cannot be decrypted or fails JSON
+                                parsing.
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><span class="st st-4">400</span></td>
+                            <td><code>nothing new to update</code></td>
+                            <td><code>UptoDate</code></td>
+                            <td>
+                                <code>change-phone</code> received the user's
+                                current phone number.
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><span class="st st-40">401</span></td>
+                            <td><code>unauthorized</code></td>
+                            <td><code>Unauthorized</code></td>
+                            <td>
+                                Missing <code>Authorization</code> header, wrong
+                                prefix, or expired token.
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><span class="st st-40">403</span></td>
+                            <td><code>permission denied</code></td>
+                            <td><code>Forbidden</code></td>
+                            <td>
+                                Wrong token type; blocked user; missing session
+                                (on refresh); or cross-user session delete
+                                attempt.
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><span class="st st-4">404</span></td>
+                            <td><code>verification code not found</code></td>
+                            <td><code>VerificationCodeNotFound</code></td>
+                            <td>
+                                No OTP record exists for the phone — login not
+                                called first, or record evicted by DynamoDB TTL.
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><span class="st st-4">404</span></td>
+                            <td><code>user not found</code></td>
+                            <td><code>UserNotFound</code></td>
+                            <td>User record does not exist in DynamoDB.</td>
+                        </tr>
+                        <tr>
+                            <td><span class="st st-4">404</span></td>
+                            <td><code>invalid session</code></td>
+                            <td><code>InvalidSession</code></td>
+                            <td>
+                                Session ID does not resolve to a session record.
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><span class="st st-4">409</span></td>
+                            <td><code>record already exists</code></td>
+                            <td><code>RecordAlreadyExists</code></td>
+                            <td>
+                                A conflicting record already exists in the
+                                database.
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><span class="st st-4">429</span></td>
+                            <td>
+                                <code>too many requests, Please slow down</code>
+                            </td>
+                            <td><code>SlowDown</code></td>
+                            <td>
+                                OTP requested within the 60-second rate-limit
+                                window for a phone number.
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><span class="st st-5">500</span></td>
+                            <td><code>internal server error</code></td>
+                            <td><code>InternalServerError</code></td>
+                            <td>
+                                Database error, WhatsApp API error, or data
+                                corruption. Details are logged server-side only.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+        </main>
+
+        <script>
+            // ── Copy button ───────────────────────────────────────────
+            function copyCode(btn) {
+                const pre = btn.closest(".code-block").querySelector("pre");
+                const text = pre.innerText;
+                navigator.clipboard.writeText(text).then(() => {
+                    const orig = btn.textContent;
+                    btn.textContent = "Copied!";
+                    btn.style.color = "var(--green)";
+                    setTimeout(() => {
+                        btn.textContent = orig;
+                        btn.style.color = "";
+                    }, 1500);
+                });
+            }
+
+            // ── Active sidebar link tracking ─────────────────────────
+            const sections = document.querySelectorAll(
+                "section[id], .endpoint-card[id], .hero[id]",
+            );
+            const links = document.querySelectorAll(".sidebar-link");
+
+            const observer = new IntersectionObserver(
+                (entries) => {
+                    entries.forEach((entry) => {
+                        if (entry.isIntersecting) {
+                            const id = entry.target.id;
+                            links.forEach((l) => {
+                                l.classList.toggle(
+                                    "active",
+                                    l.getAttribute("href") === "#" + id,
+                                );
+                            });
+                        }
+                    });
+                },
+                { rootMargin: "-20% 0px -70% 0px" },
+            );
+
+            sections.forEach((s) => observer.observe(s));
+        </script>
+    </body>
+</html>
+``` Now let me verify both files were created properly:

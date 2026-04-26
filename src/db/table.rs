@@ -80,11 +80,14 @@ impl<I: Item> Table<I> for Client {
             return Ok(None);
         }
         let mut expression = String::from("SET ");
+        let mut names = std::collections::HashMap::new();
         for key in update.keys() {
-            expression.push_str(key);
+            let placeholder = format!("#{}", key);
+            expression.push_str(&placeholder);
             expression.push_str("=:");
             expression.push_str(key);
             expression.push(',');
+            names.insert(placeholder, key.to_string());
         }
         let expression = expression.trim_end_matches(",");
         let update = update
@@ -100,6 +103,7 @@ impl<I: Item> Table<I> for Client {
             .set_key(key)
             .update_expression(expression)
             .set_expression_attribute_values(Some(update))
+            .set_expression_attribute_names(Some(names))
             .return_values(ReturnValue::AllNew)
             .send()
             .await

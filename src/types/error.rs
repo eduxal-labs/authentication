@@ -29,6 +29,8 @@ pub enum Error {
     RecordAlreadyExists,
     #[error("nothing new to update")]
     UptoDate,
+    #[error("user with this phone already exists")]
+    UserAlreadyExists,
     #[error("internal server error")]
     InternalServerError,
 }
@@ -66,7 +68,7 @@ impl IntoResponse for Error {
             | Self::InvalidSession
             | Self::InvalidToken
             | Self::UptoDate => StatusCode::BAD_REQUEST,
-            Self::RecordAlreadyExists => StatusCode::CONFLICT,
+            Self::RecordAlreadyExists | Self::UserAlreadyExists => StatusCode::CONFLICT,
             Self::Unauthorized => StatusCode::UNAUTHORIZED,
             Self::Forbidden => StatusCode::FORBIDDEN,
             Self::InternalServerError => StatusCode::INTERNAL_SERVER_ERROR,

@@ -59,6 +59,10 @@ impl Users for Authenticator {
 
     async fn change_phone(&self, id: Id, phone: Phone) -> Result<Verification, Error> {
         let db = self.config.db();
+        let existing = <Client as Get<Phone, User>>::get(db, phone.clone()).await?;
+        if let Some(_) = existing {
+            return Err(Error::UserAlreadyExists);
+        }
         let user = <Client as Find<Id, User>>::find(db, id).await?;
         if user.phone == phone {
             return Err(Error::UptoDate);
@@ -84,6 +88,10 @@ impl Users for Authenticator {
         code: String,
     ) -> Result<User, Error> {
         let db = self.config.db();
+        let existing = <Client as Get<Phone, User>>::get(db, phone.clone()).await?;
+        if let Some(_) = existing {
+            return Err(Error::UserAlreadyExists);
+        }
         let verification = <Client as Find<Phone, Verification>>::find(db, phone.clone()).await?;
         if verification.code != code {
             return Err(Error::InvalidVerificationCode);

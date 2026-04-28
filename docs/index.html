@@ -691,6 +691,13 @@
                     <span class="method-badge badge-patch">PATCH</span
                     >/user/confirm-change-phone
                 </a>
+                <a class="sidebar-link" href="#delete-user">
+                    <span class="method-badge badge-delete">DEL</span>/user
+                </a>
+                <a class="sidebar-link" href="#confirm-delete-user">
+                    <span class="method-badge badge-patch">PATCH</span
+                    >/user/confirm-delete
+                </a>
             </div>
 
             <div class="sidebar-section">
@@ -2240,6 +2247,259 @@
                         </ul>
                     </div>
                 </div>
+
+                <!-- ── DELETE /user ─────────────────────────────────── -->
+                <div class="endpoint-card" id="delete-user">
+                    <div class="endpoint-header">
+                        <span class="method-pill pill-delete">DELETE</span>
+                        <span class="endpoint-path">/user</span>
+                        <span class="endpoint-desc"
+                            >Send account deletion verification code</span
+                        >
+                    </div>
+                    <div class="endpoint-body">
+                        <p class="endpoint-summary">
+                            Starts account deletion by sending a 6-digit OTP to
+                            the authenticated user's current phone number via
+                            WhatsApp. The account is not deleted until the code
+                            is confirmed with
+                            <code>PATCH /user/confirm-delete</code>.
+                        </p>
+
+                        <div class="auth-badge">🔑 Requires access token</div>
+
+                        <h3>Request</h3>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-lang">HTTP</span
+                                ><button
+                                    class="copy-btn"
+                                    onclick="copyCode(this)"
+                                >
+                                    Copy
+                                </button>
+                            </div>
+                            <pre><code><span class="t-method">DELETE</span> <span class="t-path">/user</span>
+<span class="t-header">Authorization:</span> <span class="t-value">Bearer &lt;access-token&gt;</span></code></pre>
+                        </div>
+
+                        <h3>
+                            Success Response —
+                            <span class="st st-2">200 OK</span>
+                        </h3>
+                        <p>
+                            Same shape as <code>POST /auth/login</code>. The OTP
+                            code is not included in the response.
+                        </p>
+
+                        <h3>Error Responses</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Status</th>
+                                    <th>Message</th>
+                                    <th>Cause</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><span class="st st-40">401</span></td>
+                                    <td><code>unauthorized</code></td>
+                                    <td>
+                                        Header missing, wrong prefix, or token
+                                        expired.
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><span class="st st-40">403</span></td>
+                                    <td><code>permission denied</code></td>
+                                    <td>Token is wrong type.</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="st st-4">404</span></td>
+                                    <td><code>user not found</code></td>
+                                    <td>User record does not exist.</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="st st-4">429</span></td>
+                                    <td>
+                                        <code
+                                            >too many requests, Please slow
+                                            down</code
+                                        >
+                                    </td>
+                                    <td>
+                                        A deletion verification code was already
+                                        sent within the past 60 seconds.
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><span class="st st-5">500</span></td>
+                                    <td><code>internal server error</code></td>
+                                    <td>
+                                        An unexpected server-side error
+                                        occurred.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <h3>Notes</h3>
+                        <ul>
+                            <li>
+                                The verification code is sent to the user's
+                                current phone number.
+                            </li>
+                            <li>
+                                Repeated requests are limited for 60 seconds
+                                between successful sends.
+                            </li>
+                            <li>
+                                Complete confirmation promptly after receiving
+                                the OTP.
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- ── PATCH /user/confirm-delete ───────────────────── -->
+                <div class="endpoint-card" id="confirm-delete-user">
+                    <div class="endpoint-header">
+                        <span class="method-pill pill-patch">PATCH</span>
+                        <span class="endpoint-path">/user/confirm-delete</span>
+                        <span class="endpoint-desc"
+                            >Confirm account deletion</span
+                        >
+                    </div>
+                    <div class="endpoint-body">
+                        <p class="endpoint-summary">
+                            Confirms account deletion using the OTP sent by
+                            <code>DELETE /user</code>. On success, the user
+                            account is permanently deleted.
+                        </p>
+
+                        <div class="auth-badge">🔑 Requires access token</div>
+
+                        <h3>Request</h3>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-lang">HTTP</span
+                                ><button
+                                    class="copy-btn"
+                                    onclick="copyCode(this)"
+                                >
+                                    Copy
+                                </button>
+                            </div>
+                            <pre><code><span class="t-method">PATCH</span> <span class="t-path">/user/confirm-delete</span>
+<span class="t-header">Authorization:</span> <span class="t-value">Bearer &lt;access-token&gt;</span>
+<span class="t-header">Content-Type:</span>  <span class="t-value">application/json</span>
+
+{
+  <span class="t-key">"phone"</span><span class="t-punc">:</span> <span class="t-str">"+254759762268"</span><span class="t-punc">,</span>   <span class="t-comment">// required — the current phone number</span>
+  <span class="t-key">"code"</span><span class="t-punc">:</span>  <span class="t-str">"861877"</span>            <span class="t-comment">// required — 6-digit OTP</span>
+}</code></pre>
+                        </div>
+
+                        <h3>
+                            Success Response —
+                            <span class="st st-2">200 OK</span>
+                        </h3>
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <span class="code-lang">JSON</span
+                                ><button
+                                    class="copy-btn"
+                                    onclick="copyCode(this)"
+                                >
+                                    Copy
+                                </button>
+                            </div>
+                            <pre><code><span class="t-null">null</span></code></pre>
+                        </div>
+
+                        <h3>Error Responses</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Status</th>
+                                    <th>Message</th>
+                                    <th>Cause</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><span class="st st-4">400</span></td>
+                                    <td>
+                                        <code>invalid verification code</code>
+                                    </td>
+                                    <td>
+                                        OTP does not match the stored code, is
+                                        expired, or is not valid for this
+                                        deletion request.
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><span class="st st-40">401</span></td>
+                                    <td><code>unauthorized</code></td>
+                                    <td>
+                                        Header missing, wrong prefix, or token
+                                        expired.
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><span class="st st-40">403</span></td>
+                                    <td><code>permission denied</code></td>
+                                    <td>
+                                        Token is wrong type, or the verification
+                                        request does not belong to the
+                                        authenticated user.
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><span class="st st-4">404</span></td>
+                                    <td>
+                                        <code>verification code not found</code>
+                                    </td>
+                                    <td>
+                                        No active verification request was found
+                                        for this phone number.
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><span class="st st-5">500</span></td>
+                                    <td><code>internal server error</code></td>
+                                    <td>
+                                        An unexpected server-side error
+                                        occurred.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <h3>Notes</h3>
+                        <ul>
+                            <li>
+                                The authenticated user is derived from the
+                                access token.
+                            </li>
+                            <li>
+                                Use the same phone number that received the
+                                deletion verification code.
+                            </li>
+                            <li>
+                                If the code is expired or incorrect, request a
+                                new one with <code>DELETE /user</code>.
+                            </li>
+                            <li>
+                                On success, the account is deleted immediately.
+                                Clients should clear local credentials and
+                                redirect the user out of the authenticated
+                                experience.
+                            </li>
+                        </ul>
+                    </div>
+                </div>
             </section>
 
             <!-- ══════════════════════════════════════════════════════
@@ -2668,7 +2928,8 @@
                             <td><code>SlowDown</code></td>
                             <td>
                                 Too many similar requests were made in a short
-                                period.
+                                period, including repeated verification-code
+                                requests within the cooldown window.
                             </td>
                         </tr>
                         <tr>

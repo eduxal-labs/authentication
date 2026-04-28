@@ -77,4 +77,6 @@ pub trait Users {
     async fn change_phone(&self, id: Id, phone: Phone) -> Result<Verification, Error>;
     async fn confirm_change_phone(&self, id: Id, phone: Phone, code: String)
     -> Result<User, Error>;
+    async fn delete(&self, id: Id) -> Result<Verification, Error>;
+    async fn confirm_delete(&self, id: Id, phone: Phone, code: String) -> Result<(), Error>;
 }

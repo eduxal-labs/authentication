@@ -29,7 +29,7 @@ const SETUP_TTL: i64 = 15;
 /// async fn refresh(token: Token<Refresh>) { ... }  // only refresh tokens
 /// async fn dashboard(token: Token<Access>) { ... }  // only access tokens
 /// ```
-pub trait Purpose: Send + Sync + 'static {
+trait Purpose: Send + Sync + 'static {
     /// How long tokens of this purpose remain valid, in days.
     const TTL: Duration;
     /// The discriminant stored inside the encrypted payload (`1` = Access, `2` = Refresh, `3` = Setup).

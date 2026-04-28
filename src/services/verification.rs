@@ -1,5 +1,5 @@
 use crate::db::Table;
-use crate::services::{Find, Get};
+use crate::services::{Delete, Find, Get};
 use crate::types::{Error, Phone, Verification};
 use aws_sdk_dynamodb::Client;
 
@@ -14,5 +14,12 @@ impl Get<Phone, Verification> for Client {
     async fn get(&self, phone: Phone) -> Result<Option<Verification>, Error> {
         let key = [(String::from("phone"), phone.into())];
         <Self as Table<Verification>>::get(&self, key).await
+    }
+}
+
+impl Delete<Phone, Verification> for Client {
+    async fn delete(&self, phone: Phone) -> Result<(), Error> {
+        let key = [(String::from("phone"), phone.into())];
+        <Self as Table<Verification>>::delete(&self, key).await
     }
 }

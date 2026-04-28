@@ -1,5 +1,7 @@
-use crate::services::{Authentication, Authenticator, Find, Get, Put, Sessions, Users};
-use crate::types::{Authorized, Error, Id, Phone, Registered, Session, Status, User, Verification};
+use crate::services::{Authentication, Authenticator, Delete, Find, Get, Put, Sessions, Users};
+use crate::types::{
+    Authorized, Error, Id, Phone, Purpose, Registered, Session, Status, User, Verification,
+};
 use aws_sdk_dynamodb::Client;
 use chrono::Utc;
 
@@ -12,7 +14,7 @@ impl Authentication for Authenticator {
                 return Err(Error::SlowDown);
             }
         }
-        let verification = Verification::new(phone.clone());
+        let verification = Verification::verification(phone.clone());
         let messenger = self.config.messenger();
         let (receipient, code) = (phone.as_ref(), verification.code.as_str());
         messenger.send(receipient, code).await?;
@@ -34,13 +36,16 @@ impl Authentication for Authenticator {
             }
         }
         let verification = <Client as Find<Phone, Verification>>::find(db, phone.clone()).await?;
-        if verification.code != code {
+        if verification.code != code
+            || Utc::now().timestamp() >= verification.ttl.timestamp()
+            || verification.purpose != Purpose::Verification
+        {
             return Err(Error::InvalidVerificationCode);
         }
         let user = <Client as Get<Phone, User>>::get(db, phone.clone()).await?;
         let user = match user {
             Some(user) => user,
-            None => return Authorized::verified(phone),
+            None => return Authorized::verified(phone.clone()),
         };
         if user.status == Status::Blocked {
             return Err(Error::Forbidden);
@@ -55,6 +60,7 @@ impl Authentication for Authenticator {
         }
         let authorized = session.authorized(user)?;
         <Client as Put<Session>>::put(db, session).await?;
+        <Client as Delete<Phone, Verification>>::delete(db, phone).await?;
         Ok(authorized)
     }
 

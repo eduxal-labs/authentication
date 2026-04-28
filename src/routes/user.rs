@@ -4,7 +4,7 @@ use axum::debug_handler;
 use axum::{
     Json, Router,
     extract::State,
-    routing::{get, patch, post},
+    routing::{delete, get, patch, post},
 };
 use serde::Deserialize;
 
@@ -32,6 +32,8 @@ pub fn router(authenticator: Authenticator) -> Router {
         .route("/rename", patch(rename))
         .route("/change-phone", post(change_phone))
         .route("/confirm-change-phone", patch(confirm_change_phone))
+        .route("/delete", get(initiate_delete))
+        .route("/delete", delete(confirm_delete))
         .with_state(authenticator)
 }
 
@@ -76,4 +78,24 @@ async fn confirm_change_phone(
     let id = token.subject()?;
     let user = authenticator.confirm_change_phone(id, phone, code).await?;
     Ok(Json(user))
+}
+
+#[debug_handler]
+async fn initiate_delete(
+    State(authenticator): State<Authenticator>,
+    token: Token<Access>,
+) -> Result<Json<Verification>> {
+    let id = token.subject()?;
+    let verification = authenticator.delete(id).await?;
+    Ok(Json(verification))
+}
+
+#[debug_handler]
+async fn confirm_delete(
+    State(authenticator): State<Authenticator>,
+    token: Token<Access>,
+    Json(Verify { phone, code }): Json<Verify>,
+) -> Result<()> {
+    let id = token.subject()?;
+    authenticator.confirm_delete(id, phone, code).await
 }

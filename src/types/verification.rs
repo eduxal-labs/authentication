@@ -1,4 +1,4 @@
-use crate::types::{Error, Phone};
+use crate::types::{Error, Id, Phone};
 use aws_sdk_dynamodb::types::AttributeValue;
 use chrono::{DateTime, Duration, Utc};
 use serde::Serialize;
@@ -10,26 +10,49 @@ const TTL: i64 = 15;
 #[derive(Serialize, Clone)]
 pub struct Verification {
     pub phone: Phone,
+    pub user: Option<Id>,
+    pub purpose: Purpose,
     #[serde(skip)]
     pub code: String,
     pub created: DateTime<Utc>,
     pub ttl: DateTime<Utc>,
 }
 
+#[derive(Copy, Clone, Debug, Serialize, PartialEq)]
+pub enum Purpose {
+    Verification,
+    ChangePhone,
+    DeleteUser,
+}
+
 impl Verification {
     /// Rate Limit Time in seconds until when a user can try to request another Verification code.
     pub const RLTS: Duration = Duration::seconds(60);
-    pub fn new(phone: Phone) -> Self {
+    fn new(phone: Phone, user: Option<Id>, purpose: Purpose) -> Self {
         let code = rand::random_range::<u32, _>(100000..=999999);
         let code = format!("{:0>6}", code);
         let created = Utc::now();
         let ttl = created + Duration::minutes(TTL);
         Self {
             phone,
+            user,
+            purpose,
             code,
             created,
             ttl,
         }
+    }
+
+    pub fn verification(phone: Phone) -> Self {
+        Self::new(phone, None, Purpose::Verification)
+    }
+
+    pub fn chnage_phone(phone: Phone, user: Id) -> Self {
+        Self::new(phone, Some(user), Purpose::ChangePhone)
+    }
+
+    pub fn delete_user(phone: Phone, user: Id) -> Self {
+        Self::new(phone, Some(user), Purpose::DeleteUser)
     }
 }
 
@@ -38,8 +61,14 @@ impl From<Verification> for HashMap<String, AttributeValue> {
         let phone = verification.phone.to_string();
         let created = verification.created.timestamp().to_string();
         let ttl = verification.ttl.timestamp().to_string();
+        let user = match verification.user {
+            Some(id) => AttributeValue::S(id.to_string()),
+            None => AttributeValue::Null(true),
+        };
         [
             (String::from("phone"), AttributeValue::S(phone)),
+            (String::from("user"), user),
+            (String::from("purpose"), verification.purpose.into()),
             (String::from("code"), AttributeValue::S(verification.code)),
             (String::from("created"), AttributeValue::N(created)),
             (String::from("ttl"), AttributeValue::N(ttl)),
@@ -64,6 +93,10 @@ impl TryFrom<HashMap<String, AttributeValue>> for Verification {
         let phone = map.remove("phone").ok_or_else(|| {
             Error::internal("expected field phone for type Verification.", map.clone())
         })?;
+        let user_attribute = map.remove("user");
+        let purpose = map.remove("purpose").ok_or_else(|| {
+            Error::internal("expected field purpose for type Verification.", map.clone())
+        })?;
         let code = map.remove("code").ok_or_else(|| {
             Error::internal("expected field code for type Verification.", map.clone())
         })?;
@@ -83,6 +116,11 @@ impl TryFrom<HashMap<String, AttributeValue>> for Verification {
                 ));
             }
         };
+        let mut user = None;
+        if let Some(attribute) = user_attribute {
+            user = Some(attribute.try_into()?)
+        }
+        let purpose = purpose.try_into()?;
         let code = match code {
             AttributeValue::S(code) => code,
             _ => {
@@ -124,9 +162,40 @@ impl TryFrom<HashMap<String, AttributeValue>> for Verification {
         let phone = Phone::new(phone).map_err(Error::server)?;
         Ok(Self {
             phone,
+            user,
+            purpose,
             code,
             created,
             ttl,
         })
+    }
+}
+
+impl From<Purpose> for AttributeValue {
+    fn from(purpose: Purpose) -> Self {
+        let value = match purpose {
+            Purpose::Verification => "verification",
+            Purpose::ChangePhone => "change-phone",
+            Purpose::DeleteUser => "delete-user",
+        };
+        AttributeValue::S(String::from(value))
+    }
+}
+
+impl TryFrom<AttributeValue> for Purpose {
+    type Error = Error;
+    fn try_from(value: AttributeValue) -> Result<Self, Self::Error> {
+        if let AttributeValue::S(value) = value {
+            let value = value.to_lowercase();
+            return match value.as_str() {
+                "verification" => Ok(Self::Verification),
+                "change-phone" => Ok(Self::ChangePhone),
+                "delete-user" => Ok(Self::DeleteUser),
+                _ => Err(Error::server("invalid value for Verification Purpose")),
+            };
+        }
+        Err(Error::server(
+            "invalid AttributeValue type for Verification Purpose",
+        ))
     }
 }

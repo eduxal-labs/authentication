@@ -2,21 +2,32 @@ name = "eduxal-auth-worker"
 main = "src/index.ts"
 compatibility_date = "2025-05-25"
 
+# ── KV: verification codes (15-min TTL) ──────────────────────────
+# Create once: wrangler kv:namespace create VERIFICATION_KV
+# Then paste the output `id` and `preview_id` below.
 [[kv_namespaces]]
 binding = "VERIFICATION_KV"
-id = "your-kv-namespace-id"
-preview_id = "your-kv-preview-id"
+id = "<PASTE_KV_ID_HERE>"
+preview_id = "<PASTE_KV_PREVIEW_ID_HERE>"
 
+# ── D1: user data ────────────────────────────────────────────────
+# Create once: wrangler d1 create eduxal
+# Then paste the output `database_id` below.
 [[d1_databases]]
 binding = "DB"
-database_name = "eduxal-auth-db"
-database_id = "your-d1-database-id"
+database_name = "eduxal"
+database_id = "<PASTE_D1_ID_HERE>"
 
+# ── R2: profile pictures ─────────────────────────────────────────
+# Wrangler auto-creates this on first deploy (no manual step needed).
 [[r2_buckets]]
 binding = "AVATARS_BUCKET"
 bucket_name = "eduxal-avatars"
 
+# ── Environment variables ────────────────────────────────────────
 [vars]
 WHATSAPP_PHONE_NUMBER_ID = "960426547146856"
-# WHATSAPP_TOKEN is set via `wrangler secret put WHATSAPP_TOKEN`
-# JWT_SECRET is set via `wrangler secret put JWT_SECRET`
+
+# Secrets — set once via CLI:
+#   wrangler secret put WHATSAPP_TOKEN
+#   wrangler secret put JWT_SECRET

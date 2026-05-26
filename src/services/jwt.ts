@@ -4,12 +4,12 @@ import type { JwtPayload } from "../types";
 const TOKEN_TTL_TEMP = "5m";
 const TOKEN_TTL_PERMANENT = "30d";
 
-function getSecret(env: { PASETO_PASSWORD: string }): Uint8Array {
-  return new TextEncoder().encode(env.PASETO_PASSWORD);
+function getSecret(env: { JWT_SECRET: string }): Uint8Array {
+  return new TextEncoder().encode(env.JWT_SECRET);
 }
 
 export async function createTempToken(
-  env: { PASETO_PASSWORD: string },
+  env: { JWT_SECRET: string },
   phone: string,
 ): Promise<string> {
   const secret = getSecret(env);
@@ -24,7 +24,7 @@ export async function createTempToken(
 }
 
 export async function createPermanentToken(
-  env: { PASETO_PASSWORD: string },
+  env: { JWT_SECRET: string },
   userId: string,
   phone: string,
 ): Promise<string> {
@@ -37,7 +37,7 @@ export async function createPermanentToken(
 }
 
 export async function verifyToken(
-  env: { PASETO_PASSWORD: string },
+  env: { JWT_SECRET: string },
   token: string,
 ): Promise<JwtPayload> {
   const secret = getSecret(env);

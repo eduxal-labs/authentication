@@ -18,7 +18,7 @@ type Bindings = {
   VERIFICATION_KV: KVNamespace;
   DB: D1Database;
   AVATARS_BUCKET: R2Bucket;
-  PASETO_PASSWORD: string;
+  JWT_SECRET: string;
   WHATSAPP_PHONE_NUMBER_ID: string;
   WHATSAPP_TOKEN: string;
 };

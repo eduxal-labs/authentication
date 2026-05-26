@@ -1,0 +1,90 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Build & Deploy to Cloudflare
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # ── One-time resource setup (idempotent — skips if already exists) ──
+
+      - name: Create KV namespace (if missing)
+        id: kv
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          # Check if KV namespace already linked in wrangler.toml
+          KV_ID=$(grep -A1 'VERIFICATION_KV' wrangler.toml | grep 'id =' | sed 's/id = "\(.*\)"/\1/')
+          if [ -z "$KV_ID" ] || [ "$KV_ID" = "<PASTE_KV_ID_HERE>" ]; then
+            echo "Creating KV namespace..."
+            CREATE_OUTPUT=$(npx wrangler kv:namespace create VERIFICATION_KV 2>&1)
+            KV_ID=$(echo "$CREATE_OUTPUT" | grep -oP 'id = "\K[^"]+')
+            sed -i "s/id = \".*\"/id = \"$KV_ID\"/" wrangler.toml
+            sed -i "s/preview_id = \".*\"/preview_id = \"$KV_ID\"/" wrangler.toml
+            echo "KV namespace created: $KV_ID"
+          else
+            echo "KV namespace already configured: $KV_ID"
+          fi
+          echo "kv_id=$KV_ID" >> $GITHUB_OUTPUT
+
+      - name: Create D1 database (if missing)
+        id: d1
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          DB_ID=$(grep -A1 'database_id' wrangler.toml | grep 'database_id =' | sed 's/database_id = "\(.*\)"/\1/')
+          if [ -z "$DB_ID" ] || [ "$DB_ID" = "<PASTE_D1_ID_HERE>" ]; then
+            echo "Creating D1 database..."
+            CREATE_OUTPUT=$(npx wrangler d1 create eduxal 2>&1)
+            DB_ID=$(echo "$CREATE_OUTPUT" | grep -oP 'database_id = "\K[^"]+')
+            sed -i "s/database_id = \".*\"/database_id = \"$DB_ID\"/" wrangler.toml
+            echo "D1 database created: $DB_ID"
+          else
+            echo "D1 database already configured: $DB_ID"
+          fi
+          echo "db_id=$DB_ID" >> $GITHUB_OUTPUT
+
+      - name: Run D1 migrations
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: npx wrangler d1 execute eduxal --file=./schema.sql
+
+      # ── Secret mapping: GitHub Secrets → Cloudflare Worker secrets ──
+
+      - name: Set Worker secrets
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          # GitHub secret WHATSAPP_TOKEN → wrangler secret WHATSAPP_TOKEN
+          echo "${{ secrets.WHATSAPP_TOKEN }}" | npx wrangler secret put WHATSAPP_TOKEN
+
+          # GitHub secret PASETO_PASSWORD → wrangler secret JWT_SECRET
+          echo "${{ secrets.PASETO_PASSWORD }}" | npx wrangler secret put JWT_SECRET
+
+      # ── Deploy ──
+
+      - name: Deploy Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: npx wrangler deploy

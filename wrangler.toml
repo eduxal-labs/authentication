@@ -3,16 +3,14 @@ main = "src/index.ts"
 compatibility_date = "2025-05-25"
 
 # ── KV: verification codes (15-min TTL) ──────────────────────────
-# Create once: wrangler kv:namespace create VERIFICATION_KV
-# Then paste the output `id` and `preview_id` below.
+# Auto-created by CI/CD on first deploy.
 [[kv_namespaces]]
 binding = "VERIFICATION_KV"
 id = "<PASTE_KV_ID_HERE>"
 preview_id = "<PASTE_KV_PREVIEW_ID_HERE>"
 
 # ── D1: user data ────────────────────────────────────────────────
-# Create once: wrangler d1 create eduxal
-# Then paste the output `database_id` below.
+# Auto-created by CI/CD on first deploy.
 [[d1_databases]]
 binding = "DB"
 database_name = "eduxal"
@@ -23,6 +21,11 @@ database_id = "<PASTE_D1_ID_HERE>"
 [[r2_buckets]]
 binding = "AVATARS_BUCKET"
 bucket_name = "eduxal-avatars"
+
+# ── Custom domain route ──────────────────────────────────────────
+# CI/CD manages this via Cloudflare API (see deploy.yml).
+# The worker serves traffic for auth.eduxal.com/* once the route
+# and proxied DNS record are in place.
 
 # ── Environment variables ────────────────────────────────────────
 [vars]

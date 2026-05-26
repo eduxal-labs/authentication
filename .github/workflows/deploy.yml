@@ -34,7 +34,6 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
-          # Check if KV namespace already linked in wrangler.toml
           KV_ID=$(grep -A1 'VERIFICATION_KV' wrangler.toml | grep 'id =' | sed 's/id = "\(.*\)"/\1/')
           if [ -z "$KV_ID" ] || [ "$KV_ID" = "<PASTE_KV_ID_HERE>" ]; then
             echo "Creating KV namespace..."
@@ -76,10 +75,7 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
-          # GitHub secret WHATSAPP_TOKEN → wrangler secret WHATSAPP_TOKEN
           echo "${{ secrets.WHATSAPP_TOKEN }}" | npx wrangler secret put WHATSAPP_TOKEN
-
-          # GitHub secret PASETO_PASSWORD → wrangler secret JWT_SECRET
           echo "${{ secrets.PASETO_PASSWORD }}" | npx wrangler secret put JWT_SECRET
 
       # ── Deploy ──
@@ -88,3 +84,101 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: npx wrangler deploy
+
+      # ── Custom domain: auth.eduxal.com → Worker ─────────────────
+
+      - name: Fetch Worker route ID and pattern
+        id: worker-info
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          # Get the workers.dev subdomain
+          RESPONSE=$(curl -sf \
+            "https://api.cloudflare.com/client/v4/accounts/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/workers/scripts/eduxal-auth-worker/subdomain" \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN")
+          WORKERS_DEV=$(echo "$RESPONSE" | jq -r '.result.subdomain')
+          echo "workers_dev=${WORKERS_DEV}.workers.dev" >> $GITHUB_OUTPUT
+          echo "workers_dev=${WORKERS_DEV}.workers.dev"
+
+      - name: Upsert proxied DNS record for auth.eduxal.com
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ZONE: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+        run: |
+          TARGET="${{ steps.worker-info.outputs.workers_dev }}"
+          echo "Target: $TARGET"
+
+          # Check if DNS record already exists
+          RECORD_ID=$(curl -sf \
+            "https://api.cloudflare.com/client/v4/zones/$CF_ZONE/dns_records?type=CNAME&name=auth.eduxal.com" \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" | jq -r '.result[0].id // empty')
+
+          PAYLOAD=$(jq -n \
+            --arg target "$TARGET" \
+            '{type: "CNAME", name: "auth", content: $target, proxied: true, ttl: 1}')
+
+          if [ -n "$RECORD_ID" ]; then
+            echo "Updating existing CNAME $RECORD_ID → $TARGET"
+            RESPONSE=$(curl -s -X PUT \
+              "https://api.cloudflare.com/client/v4/zones/$CF_ZONE/dns_records/$RECORD_ID" \
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d "$PAYLOAD")
+          else
+            echo "Creating new CNAME auth.eduxal.com → $TARGET"
+            RESPONSE=$(curl -s -X POST \
+              "https://api.cloudflare.com/client/v4/zones/$CF_ZONE/dns_records" \
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d "$PAYLOAD")
+          fi
+
+          SUCCESS=$(echo "$RESPONSE" | jq -r '.success')
+          if [ "$SUCCESS" != "true" ]; then
+            echo "DNS record upsert failed:"
+            echo "$RESPONSE" | jq '.errors'
+            exit 1
+          fi
+          echo "DNS record active: auth.eduxal.com → $TARGET (proxied)"
+
+      - name: Upsert Worker Route (auth.eduxal.com/* → worker)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          ROUTE_PATTERN="auth.eduxal.com/*"
+          ACCOUNT_ID="${{ secrets.CLOUDFLARE_ACCOUNT_ID }}"
+          ZONE_ID="${{ secrets.CLOUDFLARE_ZONE_ID }}"
+
+          # List existing routes and find ours
+          EXISTING=$(curl -sf \
+            "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/workers/routes" \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN")
+
+          ROUTE_ID=$(echo "$EXISTING" | jq -r --arg pat "$ROUTE_PATTERN" \
+            '.result[] | select(.pattern == $pat) | .id // empty' | head -1)
+
+          if [ -n "$ROUTE_ID" ]; then
+            echo "Updating existing Worker route $ROUTE_ID"
+            RESPONSE=$(curl -s -X PUT \
+              "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/workers/routes/$ROUTE_ID" \
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d "$(jq -n --arg pattern "$ROUTE_PATTERN" --arg script eduxal-auth-worker \
+                '{pattern: $pattern, script: $script}')")
+          else
+            echo "Creating new Worker route: $ROUTE_PATTERN → eduxal-auth-worker"
+            RESPONSE=$(curl -s -X POST \
+              "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/workers/routes" \
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d "$(jq -n --arg pattern "$ROUTE_PATTERN" --arg script eduxal-auth-worker \
+                '{pattern: $pattern, script: $script}')")
+          fi
+
+          SUCCESS=$(echo "$RESPONSE" | jq -r '.success')
+          if [ "$SUCCESS" != "true" ]; then
+            echo "Worker route upsert failed:"
+            echo "$RESPONSE" | jq '.errors'
+            exit 1
+          fi
+          echo "Worker route active: $ROUTE_PATTERN → eduxal-auth-worker"

@@ -28,6 +28,6 @@ bucket_name = "eduxal-avatars"
 [vars]
 WHATSAPP_PHONE_NUMBER_ID = "960426547146856"
 
-# Secrets — set once via CLI:
+# Secrets — set once via CLI (values sourced from GitHub Actions secrets):
 #   wrangler secret put WHATSAPP_TOKEN
-#   wrangler secret put JWT_SECRET
+#   wrangler secret put PASETO_PASSWORD

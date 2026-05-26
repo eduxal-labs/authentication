@@ -4,7 +4,7 @@ import type { JwtPayload } from "../types";
 
 type Env = {
   Bindings: {
-    JWT_SECRET: string;
+    PASETO_PASSWORD: string;
   };
   Variables: {
     jwtPayload: JwtPayload;

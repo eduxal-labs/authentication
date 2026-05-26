@@ -1,0 +1,22 @@
+name = "eduxal-auth-worker"
+main = "src/index.ts"
+compatibility_date = "2025-05-25"
+
+[[kv_namespaces]]
+binding = "VERIFICATION_KV"
+id = "your-kv-namespace-id"
+preview_id = "your-kv-preview-id"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "eduxal-auth-db"
+database_id = "your-d1-database-id"
+
+[[r2_buckets]]
+binding = "AVATARS_BUCKET"
+bucket_name = "eduxal-avatars"
+
+[vars]
+WHATSAPP_PHONE_NUMBER_ID = "960426547146856"
+# WHATSAPP_TOKEN is set via `wrangler secret put WHATSAPP_TOKEN`
+# JWT_SECRET is set via `wrangler secret put JWT_SECRET`

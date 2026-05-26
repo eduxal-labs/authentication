@@ -1,0 +1,19 @@
+{
+  "name": "eduxal-auth-worker",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:setup": "wrangler d1 execute eduxal-auth-db --file=./schema.sql",
+    "db:setup:local": "wrangler d1 execute eduxal-auth-db --file=./schema.sql --local"
+  },
+  "dependencies": {
+    "hono": "^4.7.0",
+    "jose": "^5.9.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250523.0",
+    "wrangler": "^3.114.0"
+  }
+}

@@ -37,11 +37,24 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
-          KV_ID=$(grep -A1 'VERIFICATION_KV' wrangler.toml | grep 'id =' | sed 's/id = "\(.*\)"/\1/')
+          set -euo pipefail
+
+          # Extract current KV ID from wrangler.toml
+          KV_ID=$(grep -A1 'VERIFICATION_KV' wrangler.toml | grep 'id =' | sed 's/.*id = "\(.*\)"/\1/')
+
           if [ -z "$KV_ID" ] || [ "$KV_ID" = "<PASTE_KV_ID_HERE>" ]; then
-            echo "Creating KV namespace..."
-            CREATE_OUTPUT=$(npx wrangler kv:namespace create VERIFICATION_KV 2>&1)
-            KV_ID=$(echo "$CREATE_OUTPUT" | grep -oP 'id = "\K[^"]+')
+            echo "Creating KV namespace VERIFICATION_KV..."
+            CREATE_OUTPUT=$(npx wrangler kv:namespace create VERIFICATION_KV)
+            echo "$CREATE_OUTPUT"
+
+            # Extract ID from wrangler output — matches: id = "abc123..."
+            KV_ID=$(echo "$CREATE_OUTPUT" | grep -Eo 'id = "[^"]+"' | head -1 | sed 's/id = "\(.*\)"/\1/')
+
+            if [ -z "$KV_ID" ]; then
+              echo "ERROR: Failed to extract KV namespace ID from wrangler output"
+              exit 1
+            fi
+
             sed -i "s/id = \".*\"/id = \"$KV_ID\"/" wrangler.toml
             sed -i "s/preview_id = \".*\"/preview_id = \"$KV_ID\"/" wrangler.toml
             echo "KV namespace created: $KV_ID"
@@ -55,11 +68,24 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
-          DB_ID=$(grep -A1 'database_id' wrangler.toml | grep 'database_id =' | sed 's/database_id = "\(.*\)"/\1/')
+          set -euo pipefail
+
+          # Extract current D1 database ID from wrangler.toml
+          DB_ID=$(grep -A1 'database_id' wrangler.toml | grep 'database_id =' | sed 's/.*database_id = "\(.*\)"/\1/')
+
           if [ -z "$DB_ID" ] || [ "$DB_ID" = "<PASTE_D1_ID_HERE>" ]; then
-            echo "Creating D1 database..."
-            CREATE_OUTPUT=$(npx wrangler d1 create eduxal 2>&1)
-            DB_ID=$(echo "$CREATE_OUTPUT" | grep -oP 'database_id = "\K[^"]+')
+            echo "Creating D1 database eduxal..."
+            CREATE_OUTPUT=$(npx wrangler d1 create eduxal)
+            echo "$CREATE_OUTPUT"
+
+            # Extract ID from wrangler output — matches: database_id = "abc123..."
+            DB_ID=$(echo "$CREATE_OUTPUT" | grep -Eo 'database_id = "[^"]+"' | head -1 | sed 's/database_id = "\(.*\)"/\1/')
+
+            if [ -z "$DB_ID" ]; then
+              echo "ERROR: Failed to extract D1 database ID from wrangler output"
+              exit 1
+            fi
+
             sed -i "s/database_id = \".*\"/database_id = \"$DB_ID\"/" wrangler.toml
             echo "D1 database created: $DB_ID"
           else

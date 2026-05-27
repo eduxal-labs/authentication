@@ -84,8 +84,8 @@ jobs:
               exit 1
             fi
             KV_ID=$(echo "$RESPONSE" | jq -r '.result.id')
-            sed -i "s/id = \".*\"/id = \"$KV_ID\"/" wrangler.toml
-            sed -i "s/preview_id = \".*\"/preview_id = \"$KV_ID\"/" wrangler.toml
+            sed -i "s/^id = \".*\"/id = \"$KV_ID\"/" wrangler.toml
+            sed -i "s/^preview_id = \".*\"/preview_id = \"$KV_ID\"/" wrangler.toml
             echo "KV namespace created: $KV_ID"
           else
             echo "KV namespace already configured: $KV_ID"
@@ -102,7 +102,22 @@ jobs:
 
           DB_ID=$(grep -A1 'database_id' wrangler.toml | grep 'database_id =' | sed 's/.*database_id = "\(.*\)"/\1/')
 
+          NEEDS_CREATE=false
           if [ -z "$DB_ID" ] || [ "$DB_ID" = "<PASTE_D1_ID_HERE>" ]; then
+            NEEDS_CREATE=true
+          else
+            # Verify the database actually exists (catches corrupted IDs)
+            CHECK=$(curl -sf \
+              "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/d1/database/$DB_ID" \
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" || true)
+            CHECK_SUCCESS=$(echo "$CHECK" | jq -r '.success // false')
+            if [ "$CHECK_SUCCESS" != "true" ]; then
+              echo "Database $DB_ID not found (may be corrupted), recreating..."
+              NEEDS_CREATE=true
+            fi
+          fi
+
+          if [ "$NEEDS_CREATE" = "true" ]; then
             echo "Creating D1 database eduxal via Cloudflare API..."
             RESPONSE=$(curl -s -X POST \
               "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/d1/database" \
@@ -116,10 +131,10 @@ jobs:
               exit 1
             fi
             DB_ID=$(echo "$RESPONSE" | jq -r '.result.uuid')
-            sed -i "s/database_id = \".*\"/database_id = \"$DB_ID\"/" wrangler.toml
+            sed -i "s/^database_id = \".*\"/database_id = \"$DB_ID\"/" wrangler.toml
             echo "D1 database created: $DB_ID"
           else
-            echo "D1 database already configured: $DB_ID"
+            echo "D1 database already configured and verified: $DB_ID"
           fi
           echo "db_id=$DB_ID" >> $GITHUB_OUTPUT
 

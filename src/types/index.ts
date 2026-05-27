@@ -105,3 +105,28 @@ export interface ApiError {
 export interface WhatsAppTemplateParams {
   code: string;
 }
+
+// ── Admin / Delete types ───────────────────────────────────────
+export interface DeleteAccountRequest {
+  code: string;
+}
+
+export interface AdminEditUserRequest {
+  name?: string;
+  phone?: string;
+  level?: Level;
+  status?: Status;
+}
+
+export interface AdminSearchRequest {
+  q: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface PaginatedUsers {
+  users: User[];
+  total: number;
+  limit: number;
+  offset: number;
+}

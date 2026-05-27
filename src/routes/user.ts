@@ -5,6 +5,8 @@ import { generateUserId, generateVerificationCode } from "../db/ids";
 import {
   storeVerificationCode,
   getAndDeleteChangePhoneCode,
+  storeDeleteAccountCode,
+  getAndDeleteAccountCode,
 } from "../services/kv";
 import { sendWhatsAppVerification } from "../services/whatsapp";
 import { createPermanentToken } from "../services/jwt";
@@ -322,6 +324,78 @@ user.post("/change-phone/verify", async (c) => {
     updated.level,
   );
   return c.json({ token, user: updated });
+});
+
+/** POST /user/me/delete/request — send OTP for account deletion. */
+user.post("/me/delete/request", async (c) => {
+  const { jwtPayload } = c.var;
+  const db = userQueries(c.env.DB);
+
+  const currentUser = await db.findById(jwtPayload.sub!);
+  if (!currentUser) {
+    return c.json({ error: "not_found", message: "User not found" }, 404);
+  }
+
+  const code = generateVerificationCode();
+  await storeDeleteAccountCode(
+    c.env.VERIFICATION_KV,
+    currentUser.id,
+    currentUser.phone,
+    code,
+  );
+  await sendWhatsAppVerification(
+    c.env.WHATSAPP_PHONE_NUMBER_ID,
+    c.env.WHATSAPP_TOKEN,
+    currentUser.phone,
+    code,
+  );
+
+  return c.json({ success: true, message: "Verification code sent" });
+});
+
+/** POST /user/me/delete/verify — verify OTP and soft-delete account. */
+user.post("/me/delete/verify", async (c) => {
+  const { jwtPayload } = c.var;
+  const body = await c.req.json<{ code: string }>();
+  const db = userQueries(c.env.DB);
+
+  const currentUser = await db.findById(jwtPayload.sub!);
+  if (!currentUser) {
+    return c.json({ error: "not_found", message: "User not found" }, 404);
+  }
+
+  const valid = await getAndDeleteAccountCode(
+    c.env.VERIFICATION_KV,
+    currentUser.id,
+    body.code,
+  );
+
+  if (!valid) {
+    return c.json(
+      { error: "invalid_code", message: "Invalid or expired code" },
+      401,
+    );
+  }
+
+  // Delete avatar from R2 if exists
+  if (currentUser.avatar_url) {
+    try {
+      await c.env.AVATARS_BUCKET.delete(currentUser.avatar_url);
+    } catch {
+      // Avatar may not exist — ignore
+    }
+  }
+
+  // Soft delete: set status=Deleted and clear avatar_url
+  await db.adminEdit(currentUser.id, {
+    status: 3, // Deleted
+    name: currentUser.name, // keep name
+  });
+
+  // Also clear avatar_url explicitly
+  await db.updateProfile(currentUser.id, { avatar_url: "" });
+
+  return c.json({ success: true, message: "Account deleted" });
 });
 
 export default user;

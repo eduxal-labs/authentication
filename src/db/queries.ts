@@ -116,6 +116,101 @@ export function userQueries(db: D1Database) {
         .first<Pick<User, "id" | "name" | "avatar_url" | "created_at">>();
       return result ?? null;
     },
+
+    /** FTS5 search: name OR phone prefix. */
+    async search(
+      query: string,
+      limit: number = 20,
+      offset: number = 0,
+    ): Promise<{ users: User[]; total: number }> {
+      const escaped = query.replace(/"/g, '""');
+      const countResult = await db
+        .prepare(
+          "SELECT COUNT(*) as total FROM users_fts WHERE users_fts MATCH ?",
+        )
+        .bind(`"${escaped}"`)
+        .first<{ total: number }>();
+
+      const rows = await db
+        .prepare(
+          "SELECT u.* FROM users u INNER JOIN users_fts f ON u.rowid = f.rowid WHERE f MATCH ? ORDER BY rank LIMIT ? OFFSET ?",
+        )
+        .bind(`"${escaped}"`, limit, offset)
+        .all<User>();
+
+      return {
+        users: rows.results,
+        total: countResult?.total ?? 0,
+      };
+    },
+
+    /** List users (paginated). */
+    async list(
+      limit: number = 20,
+      offset: number = 0,
+    ): Promise<{ users: User[]; total: number }> {
+      const countResult = await db
+        .prepare("SELECT COUNT(*) as total FROM users")
+        .first<{ total: number }>();
+
+      const rows = await db
+        .prepare("SELECT * FROM users ORDER BY created DESC LIMIT ? OFFSET ?")
+        .bind(limit, offset)
+        .all<User>();
+
+      return {
+        users: rows.results,
+        total: countResult?.total ?? 0,
+      };
+    },
+
+    /** Edit any user field (admin). */
+    async adminEdit(
+      id: string,
+      fields: {
+        name?: string;
+        phone?: string;
+        level?: number;
+        status?: number;
+      },
+    ): Promise<User | null> {
+      const now = new Date().toISOString();
+      const sets: string[] = ["updated_at = ?"];
+      const values: unknown[] = [now];
+
+      if (fields.name !== undefined) {
+        sets.push("name = ?");
+        values.push(fields.name);
+      }
+      if (fields.phone !== undefined) {
+        sets.push("phone = ?");
+        values.push(fields.phone);
+      }
+      if (fields.level !== undefined) {
+        sets.push("level = ?");
+        values.push(fields.level);
+      }
+      if (fields.status !== undefined) {
+        sets.push("status = ?");
+        values.push(fields.status);
+      }
+
+      values.push(id);
+      await db
+        .prepare(`UPDATE users SET ${sets.join(", ")} WHERE id = ?`)
+        .bind(...values)
+        .run();
+
+      return this.findById(id);
+    },
+
+    /** Hard-delete user + their avatar key from R2 (caller handles R2). */
+    async purge(id: string): Promise<{ avatarKey: string | null }> {
+      const user = await this.findById(id);
+      const avatarKey = user?.avatar_url ?? null;
+      await db.prepare("DELETE FROM users WHERE id = ?").bind(id).run();
+      return { avatarKey };
+    },
   };
 }
 

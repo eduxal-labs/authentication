@@ -48,23 +48,24 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
           set -euo pipefail
+          ACCOUNT_ID="${{ secrets.CLOUDFLARE_ACCOUNT_ID }}"
 
-          # Extract current KV ID from wrangler.toml
           KV_ID=$(grep -A1 'VERIFICATION_KV' wrangler.toml | grep 'id =' | sed 's/.*id = "\(.*\)"/\1/')
 
           if [ -z "$KV_ID" ] || [ "$KV_ID" = "<PASTE_KV_ID_HERE>" ]; then
-            echo "Creating KV namespace VERIFICATION_KV..."
-            CREATE_OUTPUT=$(npx wrangler kv:namespace create VERIFICATION_KV)
-            echo "$CREATE_OUTPUT"
-
-            # Extract ID from wrangler output — matches: id = "abc123..."
-            KV_ID=$(echo "$CREATE_OUTPUT" | grep -Eo 'id = "[^"]+"' | head -1 | sed 's/id = "\(.*\)"/\1/')
-
-            if [ -z "$KV_ID" ]; then
-              echo "ERROR: Failed to extract KV namespace ID from wrangler output"
+            echo "Creating KV namespace VERIFICATION_KV via Cloudflare API..."
+            RESPONSE=$(curl -s -X POST \
+              "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/storage/kv/namespaces" \
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d '{"title":"VERIFICATION_KV"}')
+            echo "$RESPONSE" | jq .
+            SUCCESS=$(echo "$RESPONSE" | jq -r '.success')
+            if [ "$SUCCESS" != "true" ]; then
+              echo "ERROR: Failed to create KV namespace"
               exit 1
             fi
-
+            KV_ID=$(echo "$RESPONSE" | jq -r '.result.id')
             sed -i "s/id = \".*\"/id = \"$KV_ID\"/" wrangler.toml
             sed -i "s/preview_id = \".*\"/preview_id = \"$KV_ID\"/" wrangler.toml
             echo "KV namespace created: $KV_ID"
@@ -79,23 +80,24 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
           set -euo pipefail
+          ACCOUNT_ID="${{ secrets.CLOUDFLARE_ACCOUNT_ID }}"
 
-          # Extract current D1 database ID from wrangler.toml
           DB_ID=$(grep -A1 'database_id' wrangler.toml | grep 'database_id =' | sed 's/.*database_id = "\(.*\)"/\1/')
 
           if [ -z "$DB_ID" ] || [ "$DB_ID" = "<PASTE_D1_ID_HERE>" ]; then
-            echo "Creating D1 database eduxal..."
-            CREATE_OUTPUT=$(npx wrangler d1 create eduxal)
-            echo "$CREATE_OUTPUT"
-
-            # Extract ID from wrangler output — matches: database_id = "abc123..."
-            DB_ID=$(echo "$CREATE_OUTPUT" | grep -Eo 'database_id = "[^"]+"' | head -1 | sed 's/database_id = "\(.*\)"/\1/')
-
-            if [ -z "$DB_ID" ]; then
-              echo "ERROR: Failed to extract D1 database ID from wrangler output"
+            echo "Creating D1 database eduxal via Cloudflare API..."
+            RESPONSE=$(curl -s -X POST \
+              "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/d1/database" \
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d '{"name":"eduxal"}')
+            echo "$RESPONSE" | jq .
+            SUCCESS=$(echo "$RESPONSE" | jq -r '.success')
+            if [ "$SUCCESS" != "true" ]; then
+              echo "ERROR: Failed to create D1 database"
               exit 1
             fi
-
+            DB_ID=$(echo "$RESPONSE" | jq -r '.result.uuid')
             sed -i "s/database_id = \".*\"/database_id = \"$DB_ID\"/" wrangler.toml
             echo "D1 database created: $DB_ID"
           else
@@ -131,7 +133,6 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
-          # Get the workers.dev subdomain
           RESPONSE=$(curl -sf \
             "https://api.cloudflare.com/client/v4/accounts/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/workers/scripts/eduxal-auth-worker/subdomain" \
             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN")
@@ -147,7 +148,6 @@ jobs:
           TARGET="${{ steps.worker-info.outputs.workers_dev }}"
           echo "Target: $TARGET"
 
-          # Check if DNS record already exists
           RECORD_ID=$(curl -sf \
             "https://api.cloudflare.com/client/v4/zones/$CF_ZONE/dns_records?type=CNAME&name=auth.eduxal.com" \
             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" | jq -r '.result[0].id // empty')
@@ -157,14 +157,14 @@ jobs:
             '{type: "CNAME", name: "auth", content: $target, proxied: true, ttl: 1}')
 
           if [ -n "$RECORD_ID" ]; then
-            echo "Updating existing CNAME $RECORD_ID → $TARGET"
+            echo "Updating existing CNAME $RECORD_ID -> $TARGET"
             RESPONSE=$(curl -s -X PUT \
               "https://api.cloudflare.com/client/v4/zones/$CF_ZONE/dns_records/$RECORD_ID" \
               -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
               -H "Content-Type: application/json" \
               -d "$PAYLOAD")
           else
-            echo "Creating new CNAME auth.eduxal.com → $TARGET"
+            echo "Creating new CNAME auth.eduxal.com -> $TARGET"
             RESPONSE=$(curl -s -X POST \
               "https://api.cloudflare.com/client/v4/zones/$CF_ZONE/dns_records" \
               -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
@@ -178,9 +178,9 @@ jobs:
             echo "$RESPONSE" | jq '.errors'
             exit 1
           fi
-          echo "DNS record active: auth.eduxal.com → $TARGET (proxied)"
+          echo "DNS record active: auth.eduxal.com -> $TARGET (proxied)"
 
-      - name: Upsert Worker Route (auth.eduxal.com/* → worker)
+      - name: Upsert Worker Route (auth.eduxal.com/* -> worker)
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
@@ -188,7 +188,6 @@ jobs:
           ACCOUNT_ID="${{ secrets.CLOUDFLARE_ACCOUNT_ID }}"
           ZONE_ID="${{ secrets.CLOUDFLARE_ZONE_ID }}"
 
-          # List existing routes and find ours
           EXISTING=$(curl -sf \
             "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/workers/routes" \
             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN")
@@ -205,7 +204,7 @@ jobs:
               -d "$(jq -n --arg pattern "$ROUTE_PATTERN" --arg script eduxal-auth-worker \
                 '{pattern: $pattern, script: $script}')")
           else
-            echo "Creating new Worker route: $ROUTE_PATTERN → eduxal-auth-worker"
+            echo "Creating new Worker route: $ROUTE_PATTERN -> eduxal-auth-worker"
             RESPONSE=$(curl -s -X POST \
               "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/workers/routes" \
               -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
@@ -220,4 +219,4 @@ jobs:
             echo "$RESPONSE" | jq '.errors'
             exit 1
           fi
-          echo "Worker route active: $ROUTE_PATTERN → eduxal-auth-worker"
+          echo "Worker route active: $ROUTE_PATTERN -> eduxal-auth-worker"

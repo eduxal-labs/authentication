@@ -2,9 +2,12 @@ export interface User {
   id: string;
   phone: string;
   name: string;
+  level: number;
+  status: number;
+  created: number;
   avatar_url: string | null;
-  created_at: string;
-  updated_at: string;
+  created_at: string | null;
+  updated_at: string | null;
 }
 
 export interface VerificationCode {

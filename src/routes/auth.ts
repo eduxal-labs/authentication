@@ -184,11 +184,15 @@ auth.post("/register", requireTempToken, async (c) => {
   }
 
   const now = new Date().toISOString();
+  const nowEpoch = Math.floor(Date.now() / 1000);
 
   const user = {
     id: userId,
     phone,
     name: name.trim(),
+    level: 0,
+    status: 0,
+    created: nowEpoch,
     avatar_url: avatarUrl,
     created_at: now,
     updated_at: now,

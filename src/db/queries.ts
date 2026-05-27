@@ -21,15 +21,25 @@ export function userQueries(db: D1Database) {
     async create(user: User): Promise<void> {
       await db
         .prepare(
-          "INSERT INTO users (id, phone, name, avatar_url, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)"
+          "INSERT INTO users (id, phone, name, level, status, created, avatar_url, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
         )
-        .bind(user.id, user.phone, user.name, user.avatar_url, user.created_at, user.updated_at)
+        .bind(
+          user.id,
+          user.phone,
+          user.name,
+          user.level,
+          user.status,
+          user.created,
+          user.avatar_url,
+          user.created_at,
+          user.updated_at,
+        )
         .run();
     },
 
     async updateProfile(
       id: string,
-      fields: { name?: string; avatar_url?: string }
+      fields: { name?: string; avatar_url?: string },
     ): Promise<User | null> {
       const now = new Date().toISOString();
       const sets: string[] = ["updated_at = ?"];
@@ -63,9 +73,13 @@ export function userQueries(db: D1Database) {
       return this.findById(id);
     },
 
-    async getPublicProfile(id: string): Promise<Pick<User, "id" | "name" | "avatar_url" | "created_at"> | null> {
+    async getPublicProfile(
+      id: string,
+    ): Promise<Pick<User, "id" | "name" | "avatar_url" | "created_at"> | null> {
       const result = await db
-        .prepare("SELECT id, name, avatar_url, created_at FROM users WHERE id = ?")
+        .prepare(
+          "SELECT id, name, avatar_url, created_at FROM users WHERE id = ?",
+        )
         .bind(id)
         .first<Pick<User, "id" | "name" | "avatar_url" | "created_at">>();
       return result ?? null;

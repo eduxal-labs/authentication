@@ -6,15 +6,15 @@ compatibility_date = "2025-05-25"
 # Auto-created by CI/CD on first deploy.
 [[kv_namespaces]]
 binding = "VERIFICATION_KV"
-id = "<PASTE_KV_ID_HERE>"
-preview_id = "<PASTE_KV_PREVIEW_ID_HERE>"
+id = "7bf90944e44844129836d2f940673bbd"
+preview_id = "7bf90944e44844129836d2f940673bbd"
 
 # ── D1: user data ────────────────────────────────────────────────
 # Auto-created by CI/CD on first deploy.
 [[d1_databases]]
 binding = "DB"
 database_name = "eduxal"
-database_id = "<PASTE_D1_ID_HERE>"
+database_id = "d5caa440-b520-4a3b-aea0-4c298bda87b8"
 
 # ── R2: profile pictures ─────────────────────────────────────────
 # Wrangler auto-creates this on first deploy (no manual step needed).

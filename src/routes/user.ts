@@ -55,15 +55,24 @@ user.get("/me", async (c) => {
 user.put("/me", async (c) => {
   const { jwtPayload } = c.var;
   const db = userQueries(c.env.DB);
+  const contentType = c.req.header("Content-Type") ?? "";
 
   const currentUser = await db.findById(jwtPayload.sub!);
   if (!currentUser) {
     return c.json({ error: "not_found", message: "User not found" }, 404);
   }
 
-  const formData = await c.req.parseBody();
-  const nameField = formData["name"] as string | undefined;
-  const avatarFile = formData["avatar"] as File | undefined;
+  let nameField: string | undefined;
+  let avatarFile: File | undefined;
+
+  if (contentType.includes("multipart/form-data")) {
+    const formData = await c.req.parseBody();
+    nameField = formData["name"] as string | undefined;
+    avatarFile = formData["avatar"] as File | undefined;
+  } else {
+    const body = await c.req.json<{ name?: string }>();
+    nameField = body.name;
+  }
 
   const updates: { name?: string; avatar_url?: string } = {};
 

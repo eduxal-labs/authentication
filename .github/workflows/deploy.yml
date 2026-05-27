@@ -71,22 +71,35 @@ jobs:
           KV_ID=$(grep -A1 'VERIFICATION_KV' wrangler.toml | grep 'id =' | sed 's/.*id = "\(.*\)"/\1/')
 
           if [ -z "$KV_ID" ] || [ "$KV_ID" = "<PASTE_KV_ID_HERE>" ]; then
-            echo "Creating KV namespace VERIFICATION_KV via Cloudflare API..."
-            RESPONSE=$(curl -s -X POST \
+            echo "Looking up or creating KV namespace VERIFICATION_KV..."
+
+            # First try to find an existing namespace with this title
+            LIST=$(curl -sf \
               "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/storage/kv/namespaces" \
-              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-              -H "Content-Type: application/json" \
-              -d '{"title":"VERIFICATION_KV"}')
-            echo "$RESPONSE" | jq .
-            SUCCESS=$(echo "$RESPONSE" | jq -r '.success')
-            if [ "$SUCCESS" != "true" ]; then
-              echo "ERROR: Failed to create KV namespace"
-              exit 1
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN")
+            KV_ID=$(echo "$LIST" | jq -r '.result[] | select(.title == "VERIFICATION_KV") | .id // empty')
+
+            if [ -n "$KV_ID" ]; then
+              echo "Found existing KV namespace: $KV_ID"
+            else
+              echo "Creating new KV namespace VERIFICATION_KV..."
+              RESPONSE=$(curl -s -X POST \
+                "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/storage/kv/namespaces" \
+                -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+                -H "Content-Type: application/json" \
+                -d '{"title":"VERIFICATION_KV"}')
+              echo "$RESPONSE" | jq .
+              SUCCESS=$(echo "$RESPONSE" | jq -r '.success')
+              if [ "$SUCCESS" != "true" ]; then
+                echo "ERROR: Failed to create KV namespace"
+                exit 1
+              fi
+              KV_ID=$(echo "$RESPONSE" | jq -r '.result.id')
+              echo "KV namespace created: $KV_ID"
             fi
-            KV_ID=$(echo "$RESPONSE" | jq -r '.result.id')
+
             sed -i "s/^id = \".*\"/id = \"$KV_ID\"/" wrangler.toml
             sed -i "s/^preview_id = \".*\"/preview_id = \"$KV_ID\"/" wrangler.toml
-            echo "KV namespace created: $KV_ID"
           else
             echo "KV namespace already configured: $KV_ID"
           fi
@@ -118,21 +131,34 @@ jobs:
           fi
 
           if [ "$NEEDS_CREATE" = "true" ]; then
-            echo "Creating D1 database eduxal via Cloudflare API..."
-            RESPONSE=$(curl -s -X POST \
+            echo "Looking up or creating D1 database eduxal..."
+
+            # First try to find an existing database with this name
+            LIST=$(curl -sf \
               "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/d1/database" \
-              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-              -H "Content-Type: application/json" \
-              -d '{"name":"eduxal"}')
-            echo "$RESPONSE" | jq .
-            SUCCESS=$(echo "$RESPONSE" | jq -r '.success')
-            if [ "$SUCCESS" != "true" ]; then
-              echo "ERROR: Failed to create D1 database"
-              exit 1
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN")
+            DB_ID=$(echo "$LIST" | jq -r '.result[] | select(.name == "eduxal") | .uuid // empty')
+
+            if [ -n "$DB_ID" ]; then
+              echo "Found existing D1 database eduxal: $DB_ID"
+            else
+              echo "Creating new D1 database eduxal..."
+              RESPONSE=$(curl -s -X POST \
+                "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/d1/database" \
+                -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+                -H "Content-Type: application/json" \
+                -d '{"name":"eduxal"}')
+              echo "$RESPONSE" | jq .
+              SUCCESS=$(echo "$RESPONSE" | jq -r '.success')
+              if [ "$SUCCESS" != "true" ]; then
+                echo "ERROR: Failed to create D1 database"
+                exit 1
+              fi
+              DB_ID=$(echo "$RESPONSE" | jq -r '.result.uuid')
+              echo "D1 database created: $DB_ID"
             fi
-            DB_ID=$(echo "$RESPONSE" | jq -r '.result.uuid')
+
             sed -i "s/^database_id = \".*\"/database_id = \"$DB_ID\"/" wrangler.toml
-            echo "D1 database created: $DB_ID"
           else
             echo "D1 database already configured and verified: $DB_ID"
           fi

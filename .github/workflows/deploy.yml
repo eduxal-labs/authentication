@@ -54,15 +54,21 @@ jobs:
             echo ""
             echo "Token debug (masked by GitHub, but check these):"
             TOKEN_LEN=$(echo -n "$CLOUDFLARE_API_TOKEN" | wc -c)
-            echo "  Length: $TOKEN_LEN chars"
+            echo "  Length: $TOKEN_LEN chars (Cloudflare tokens are ~60 chars)"
             echo "  Starts with: $(echo "$CLOUDFLARE_API_TOKEN" | cut -c1-8)"
             echo "  Ends with:   $(echo "$CLOUDFLARE_API_TOKEN" | rev | cut -c1-8 | rev)"
+            if [ "$TOKEN_LEN" -lt 50 ]; then
+              echo ""
+              echo "  ⚠  Token is too short! ($TOKEN_LEN chars)"
+              echo "  You may have copied the Token ID instead of the Token VALUE."
+              echo "  Cloudflare shows both — you need the long ~60-char Token VALUE."
+            fi
             echo ""
             echo "Common causes:"
-            echo "  - Token was regenerated (Cloudflare shows it only once)"
+            echo "  - Copied the Token ID (short) instead of Token VALUE (long ~60 chars)"
+            echo "  - Token was regenerated (Cloudflare shows value only once)"
             echo "  - Extra whitespace/newlines in the GitHub Secret value"
             echo "  - Wrong token type (needs 'Custom token', not 'API Key')"
-            echo "  - Token doesn't have the required permissions"
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             exit 1
           fi

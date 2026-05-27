@@ -13,10 +13,7 @@ export async function createTempToken(
   phone: string,
 ): Promise<string> {
   const secret = getSecret(env);
-  return new SignJWT({ phone, purpose: "registration" } as Record<
-    string,
-    unknown
-  >)
+  return new SignJWT({ sub: null, phone, purpose: "registration" } as any)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(TOKEN_TTL_TEMP)

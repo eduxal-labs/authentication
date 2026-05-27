@@ -133,7 +133,7 @@ export function userQueries(db: D1Database) {
 
       const rows = await db
         .prepare(
-          "SELECT u.* FROM users u INNER JOIN users_fts f ON u.rowid = f.rowid WHERE f MATCH ? ORDER BY rank LIMIT ? OFFSET ?",
+          "SELECT u.* FROM users u INNER JOIN users_fts f ON u.rowid = f.rowid WHERE users_fts MATCH ? ORDER BY rank LIMIT ? OFFSET ?",
         )
         .bind(`"${escaped}"`, limit, offset)
         .all<User>();

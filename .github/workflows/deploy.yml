@@ -187,87 +187,38 @@ jobs:
         run: npx wrangler deploy
 
       # ── Custom domain: auth.eduxal.com -> Worker ─────────────────
+      # Uses Cloudflare Workers Domains API — creates DNS + routing in one call
 
-      - name: Upsert proxied DNS record for auth.eduxal.com
+      - name: Attach custom domain auth.eduxal.com to worker
         if: success() && steps.deploy.outcome == 'success'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CF_ZONE: ${{ secrets.CLOUDFLARE_ZONE_ID }}
         run: |
           set -euo pipefail
-          # Proxied-only: A record target is a dummy — Worker Route handles traffic
-          DUMMY_IP="192.0.2.1"
-
-          RECORD_ID=$(curl -sf \
-            "https://api.cloudflare.com/client/v4/zones/$CF_ZONE/dns_records?type=A&name=auth.eduxal.com" \
-            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" | jq -r '.result[0].id // empty')
-
-          PAYLOAD=$(jq -n \
-            --arg content "$DUMMY_IP" \
-            '{type: "A", name: "auth", content: $content, proxied: true, ttl: 1}')
-
-          if [ -n "$RECORD_ID" ]; then
-            echo "Updating existing A record $RECORD_ID"
-            RESPONSE=$(curl -s -X PUT \
-              "https://api.cloudflare.com/client/v4/zones/$CF_ZONE/dns_records/$RECORD_ID" \
-              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-              -H "Content-Type: application/json" \
-              -d "$PAYLOAD")
-          else
-            echo "Creating proxied A record auth.eduxal.com -> $DUMMY_IP"
-            RESPONSE=$(curl -s -X POST \
-              "https://api.cloudflare.com/client/v4/zones/$CF_ZONE/dns_records" \
-              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-              -H "Content-Type: application/json" \
-              -d "$PAYLOAD")
-          fi
-
-          SUCCESS=$(echo "$RESPONSE" | jq -r '.success')
-          if [ "$SUCCESS" != "true" ]; then
-            echo "DNS record upsert failed:"
-            echo "$RESPONSE" | jq '.errors'
-            exit 1
-          fi
-          echo "DNS record active: auth.eduxal.com (proxied)"
-
-      - name: Upsert Worker Route (auth.eduxal.com/* -> worker)
-        if: success() && steps.deploy.outcome == 'success'
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: |
-          ROUTE_PATTERN="auth.eduxal.com/*"
           ACCOUNT_ID="${{ steps.account.outputs.account_id }}"
           ZONE_ID="${{ secrets.CLOUDFLARE_ZONE_ID }}"
+          HOSTNAME="auth.eduxal.com"
 
-          EXISTING=$(curl -sf \
-            "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/workers/routes" \
-            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN")
+          echo "Attaching $HOSTNAME to eduxal-auth-worker..."
 
-          ROUTE_ID=$(echo "$EXISTING" | jq -r --arg pat "$ROUTE_PATTERN" \
-            '.result[] | select(.pattern == $pat) | .id // empty' | head -1)
-
-          if [ -n "$ROUTE_ID" ]; then
-            echo "Updating existing Worker route $ROUTE_ID"
-            RESPONSE=$(curl -s -X PUT \
-              "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/workers/routes/$ROUTE_ID" \
-              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-              -H "Content-Type: application/json" \
-              -d "$(jq -n --arg pattern "$ROUTE_PATTERN" --arg script eduxal-auth-worker \
-                '{pattern: $pattern, script: $script}')")
-          else
-            echo "Creating new Worker route: $ROUTE_PATTERN -> eduxal-auth-worker"
-            RESPONSE=$(curl -s -X POST \
-              "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/workers/routes" \
-              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-              -H "Content-Type: application/json" \
-              -d "$(jq -n --arg pattern "$ROUTE_PATTERN" --arg script eduxal-auth-worker \
-                '{pattern: $pattern, script: $script}')")
-          fi
+          RESPONSE=$(curl -s -X PUT \
+            "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/domains" \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "$(jq -n \
+              --arg hostname "$HOSTNAME" \
+              --arg service "eduxal-auth-worker" \
+              --arg environment "production" \
+              --arg zone_id "$ZONE_ID" \
+              '{hostname: $hostname, service: $service, environment: $environment, zone_id: $zone_id}')")
 
           SUCCESS=$(echo "$RESPONSE" | jq -r '.success')
+          echo "$RESPONSE" | jq .
+
           if [ "$SUCCESS" != "true" ]; then
-            echo "Worker route upsert failed:"
+            echo "Domain attachment failed:"
             echo "$RESPONSE" | jq '.errors'
             exit 1
           fi
-          echo "Worker route active: $ROUTE_PATTERN -> eduxal-auth-worker"
+
+          echo "Domain attached: $HOSTNAME -> eduxal-auth-worker (DNS + routing managed by Cloudflare)"

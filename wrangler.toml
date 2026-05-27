@@ -37,5 +37,4 @@ WHATSAPP_PHONE_NUMBER_ID = "960426547146856"
 #   wrangler secret put JWT_SECRET      (from PASETO_PASSWORD)
 #
 # Token: your CLOUDFLARE_API_TOKEN must have:
-#   Account scope: Workers Scripts, KV, D1, R2, Secrets Store, Account DNS
-#   Zone scope:    DNS:Edit on eduxal.com  (for auth.eduxal.com routing)
+#   Account scope: Workers Scripts, KV, D1, R2, Secrets Store, Workers Domains

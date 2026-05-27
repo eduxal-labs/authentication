@@ -20,4 +20,13 @@ app.get("/", (c) => c.json({ status: "ok", service: "eduxal-auth-worker" }));
 app.route("/auth", auth);
 app.route("/user", user);
 
+// Global error handler — catches unhandled exceptions and returns JSON
+app.onError((err, c) => {
+  console.error("Unhandled error:", err);
+  return c.json(
+    { error: "server_error", message: err.message, stack: err.stack },
+    500,
+  );
+});
+
 export default app;

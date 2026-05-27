@@ -7,4 +7,7 @@ CREATE TABLE IF NOT EXISTS users (
   updated_at TEXT NOT NULL
 );
 
+-- Migration: add avatar_url if missing from an earlier schema
+ALTER TABLE users ADD COLUMN avatar_url TEXT;
+
 CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone);

@@ -30,6 +30,22 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # ── Pre-flight: verify the API token works ───────────────────
+
+      - name: Verify Cloudflare authentication
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          RESPONSE=$(curl -sf "https://api.cloudflare.com/client/v4/user/tokens/verify" \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN")
+          STATUS=$(echo "$RESPONSE" | jq -r '.result.status // .success')
+          if [ "$STATUS" != "active" ] && [ "$STATUS" != "true" ]; then
+            echo "Token verification failed:"
+            echo "$RESPONSE" | jq .
+            exit 1
+          fi
+          echo "Cloudflare API token verified successfully"
+
       # ── One-time resource setup (idempotent — skips if already exists) ──
 
       - name: Create KV namespace (if missing)

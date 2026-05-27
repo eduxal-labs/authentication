@@ -203,6 +203,7 @@ jobs:
           echo "workers_dev=${WORKERS_DEV}.workers.dev"
 
       - name: Upsert proxied DNS record for auth.eduxal.com
+        if: success() && steps.deploy.outcome == 'success' && steps.worker-info.outputs.workers_dev != ''
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CF_ZONE: ${{ secrets.CLOUDFLARE_ZONE_ID }}
@@ -243,6 +244,7 @@ jobs:
           echo "DNS record active: auth.eduxal.com -> $TARGET (proxied)"
 
       - name: Upsert Worker Route (auth.eduxal.com/* -> worker)
+        if: success() && steps.deploy.outcome == 'success'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |

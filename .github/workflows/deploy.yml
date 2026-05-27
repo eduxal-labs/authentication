@@ -181,6 +181,7 @@ jobs:
       # ── Deploy ───────────────────────────────────────────────────
 
       - name: Deploy Worker
+        id: deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: npx wrangler deploy
@@ -188,6 +189,7 @@ jobs:
       # ── Custom domain: auth.eduxal.com -> Worker ─────────────────
 
       - name: Fetch Worker subdomain
+        if: success() && steps.deploy.outcome == 'success'
         id: worker-info
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

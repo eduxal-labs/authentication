@@ -31,6 +31,11 @@ bucket_name = "eduxal-avatars"
 [vars]
 WHATSAPP_PHONE_NUMBER_ID = "960426547146856"
 
-# Secrets — set via GitHub Actions (deploy.yml maps GitHub secrets → wrangler):
-#   wrangler secret put WHATSAPP_TOKEN  ←  ${{ secrets.WHATSAPP_TOKEN }}
-#   wrangler secret put JWT_SECRET      ←  ${{ secrets.PASETO_PASSWORD }}
+# Secrets + API token permissions
+# Secrets — set via GitHub Actions (deploy.yml maps GitHub secrets -> wrangler):
+#   wrangler secret put WHATSAPP_TOKEN
+#   wrangler secret put JWT_SECRET      (from PASETO_PASSWORD)
+#
+# Token: your CLOUDFLARE_API_TOKEN must have:
+#   Account scope: Workers Scripts, KV, D1, R2, Secrets Store, Account DNS
+#   Zone scope:    DNS:Edit on eduxal.com  (for auth.eduxal.com routing)

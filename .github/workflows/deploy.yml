@@ -36,14 +36,29 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
-          RESPONSE=$(curl -sf "https://api.cloudflare.com/client/v4/user/tokens/verify" \
+          set -euo pipefail
+
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            "https://api.cloudflare.com/client/v4/user/tokens/verify" \
             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN")
-          STATUS=$(echo "$RESPONSE" | jq -r '.result.status // .success')
-          if [ "$STATUS" != "active" ] && [ "$STATUS" != "true" ]; then
-            echo "Token verification failed:"
-            echo "$RESPONSE" | jq .
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+
+          echo "HTTP status: $HTTP_CODE"
+          echo "$BODY" | jq .
+
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "Token verification failed (HTTP $HTTP_CODE)"
             exit 1
           fi
+
+          STATUS=$(echo "$BODY" | jq -r '.result.status // "unknown"')
+          if [ "$STATUS" != "active" ]; then
+            echo "Token is not active (status: $STATUS)"
+            exit 1
+          fi
+
           echo "Cloudflare API token verified successfully"
 
       # ── One-time resource setup (idempotent — skips if already exists) ──

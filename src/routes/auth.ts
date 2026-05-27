@@ -4,6 +4,8 @@ import type {
   SendCodeRequest,
   VerifyCodeRequest,
 } from "../types";
+import { Status } from "../types";
+import { Level } from "../types";
 import { generateUserId, generateVerificationCode } from "../db/ids";
 import { userQueries } from "../db/queries";
 import {
@@ -99,12 +101,27 @@ auth.post("/verify-code", async (c) => {
   const user = await db.findByPhone(phone);
 
   if (user) {
-    // Existing user — issue permanent JWT
-    const token = await createPermanentToken(c.env, user.id, user.phone);
+    // Reject suspended users
+    if (user.status === Status.Suspended) {
+      return c.json(
+        { error: "forbidden", message: "Account is suspended" },
+        403,
+      );
+    }
+
+    // Activate Deleted / Invited users on login
+    const activeUser = await db.activateIfNeeded(user);
+
+    const token = await createPermanentToken(
+      c.env,
+      activeUser.id,
+      activeUser.phone,
+      activeUser.level,
+    );
     const response: AuthResponse = {
       status: "existing_user",
       token,
-      user,
+      user: activeUser,
     };
     return c.json(response);
   }
@@ -166,6 +183,7 @@ auth.post("/register", requireTempToken, async (c) => {
       c.env,
       existing.id,
       existing.phone,
+      existing.level,
     );
     return c.json({ token, user: existing });
   }
@@ -190,8 +208,8 @@ auth.post("/register", requireTempToken, async (c) => {
     id: userId,
     phone,
     name: name.trim(),
-    level: 0,
-    status: 0,
+    level: Level.Normal,
+    status: Status.Active,
     created: nowEpoch,
     avatar_url: avatarUrl,
     created_at: now,
@@ -200,7 +218,12 @@ auth.post("/register", requireTempToken, async (c) => {
 
   await db.create(user);
 
-  const token = await createPermanentToken(c.env, user.id, user.phone);
+  const token = await createPermanentToken(
+    c.env,
+    user.id,
+    user.phone,
+    user.level,
+  );
   return c.json({ token, user }, 201);
 });
 

@@ -24,9 +24,10 @@ export async function createPermanentToken(
   env: { JWT_SECRET: string },
   userId: string,
   phone: string,
+  level: number = 0,
 ): Promise<string> {
   const secret = getSecret(env);
-  return new SignJWT({ sub: userId, phone, purpose: "auth" })
+  return new SignJWT({ sub: userId, phone, level, purpose: "auth" })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(TOKEN_TTL_PERMANENT)

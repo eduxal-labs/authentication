@@ -1,4 +1,5 @@
 import type { User } from "../types";
+import { Level, Status } from "../types";
 
 export function userQueries(db: D1Database) {
   return {
@@ -37,6 +38,7 @@ export function userQueries(db: D1Database) {
         .run();
     },
 
+    /** Update name + avatar. */
     async updateProfile(
       id: string,
       fields: { name?: string; avatar_url?: string },
@@ -55,7 +57,6 @@ export function userQueries(db: D1Database) {
       }
 
       values.push(id);
-
       await db
         .prepare(`UPDATE users SET ${sets.join(", ")} WHERE id = ?`)
         .bind(...values)
@@ -73,6 +74,37 @@ export function userQueries(db: D1Database) {
       return this.findById(id);
     },
 
+    /** Promote or demote a user's level. */
+    async updateLevel(id: string, level: number): Promise<User | null> {
+      await db
+        .prepare("UPDATE users SET level = ?, updated_at = ? WHERE id = ?")
+        .bind(level, new Date().toISOString(), id)
+        .run();
+      return this.findById(id);
+    },
+
+    /** Change a user's status (block / unblock / delete). */
+    async updateStatus(id: string, status: number): Promise<User | null> {
+      await db
+        .prepare("UPDATE users SET status = ?, updated_at = ? WHERE id = ?")
+        .bind(status, new Date().toISOString(), id)
+        .run();
+      return this.findById(id);
+    },
+
+    /** Transition status on login: Deleted/Invited → Active. */
+    async activateIfNeeded(user: User): Promise<User> {
+      if (user.status === Status.Deleted || user.status === Status.Invited) {
+        await db
+          .prepare("UPDATE users SET status = ?, updated_at = ? WHERE id = ?")
+          .bind(Status.Active, new Date().toISOString(), user.id)
+          .run();
+        return { ...user, status: Status.Active as typeof user.status };
+      }
+      return user;
+    },
+
+    /** Public profile: no phone, no level, no status. */
     async getPublicProfile(
       id: string,
     ): Promise<Pick<User, "id" | "name" | "avatar_url" | "created_at"> | null> {

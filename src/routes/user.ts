@@ -1,7 +1,7 @@
 import { Hono } from "hono";
-import { requireAuth } from "../middleware/auth";
+import { requireAuth, requireSuper } from "../middleware/auth";
 import { userQueries } from "../db/queries";
-import { generateVerificationCode } from "../db/ids";
+import { generateUserId, generateVerificationCode } from "../db/ids";
 import {
   storeVerificationCode,
   getAndDeleteChangePhoneCode,
@@ -9,11 +9,14 @@ import {
 import { sendWhatsAppVerification } from "../services/whatsapp";
 import { createPermanentToken } from "../services/jwt";
 import type {
-  UpdateProfileRequest,
+  InviteRequest,
+  UpdateLevelRequest,
+  UpdateStatusRequest,
   ChangePhoneRequest,
   ChangePhoneVerifyRequest,
   JwtPayload,
 } from "../types";
+import { Level, Status } from "../types";
 
 type Bindings = {
   VERIFICATION_KV: KVNamespace;
@@ -32,10 +35,7 @@ const user = new Hono<{
 // All routes under /user require permanent JWT auth
 user.use("*", requireAuth);
 
-/**
- * GET /user/me
- * Returns the authenticated user's full profile.
- */
+/** GET /user/me — authenticated user's full profile. */
 user.get("/me", async (c) => {
   const { jwtPayload } = c.var;
   const db = userQueries(c.env.DB);
@@ -48,10 +48,7 @@ user.get("/me", async (c) => {
   return c.json({ user: currentUser });
 });
 
-/**
- * PUT /user/me
- * Updates the authenticated user's profile (name and/or avatar).
- */
+/** PUT /user/me — update name / avatar. */
 user.put("/me", async (c) => {
   const { jwtPayload } = c.var;
   const db = userQueries(c.env.DB);
@@ -89,7 +86,6 @@ user.put("/me", async (c) => {
   if (avatarFile && avatarFile.size > 0) {
     const ext = avatarFile.name.split(".").pop() ?? "jpg";
     const key = `avatars/${currentUser.id}.${ext}`;
-
     await c.env.AVATARS_BUCKET.put(key, avatarFile.stream(), {
       httpMetadata: { contentType: avatarFile.type },
     });
@@ -104,10 +100,120 @@ user.put("/me", async (c) => {
   return c.json({ user: updated });
 });
 
-/**
- * POST /user/change-phone/request
- * Initiates phone number change — sends a verification code to the new phone.
- */
+/** POST /user/invite — invite a user by phone + name (optional avatar). */
+user.post("/invite", async (c) => {
+  const db = userQueries(c.env.DB);
+  const contentType = c.req.header("Content-Type") ?? "";
+
+  let phone: string;
+  let name: string;
+  let avatarFile: File | undefined;
+
+  if (contentType.includes("multipart/form-data")) {
+    const formData = await c.req.parseBody();
+    phone = formData["phone"] as string;
+    name = formData["name"] as string;
+    avatarFile = formData["avatar"] as File | undefined;
+  } else {
+    const body = await c.req.json<InviteRequest>();
+    phone = body.phone;
+    name = body.name;
+  }
+
+  if (!phone || !phone.startsWith("+")) {
+    return c.json(
+      { error: "validation", message: "Phone must be in E.164 format" },
+      400,
+    );
+  }
+  if (!name || name.trim().length === 0) {
+    return c.json({ error: "validation", message: "Name is required" }, 400);
+  }
+
+  const existing = await db.findByPhone(phone);
+  if (existing) {
+    return c.json({ user: existing, invited: false });
+  }
+
+  // Create invited user
+  const userId = generateUserId();
+  let avatarUrl: string | null = null;
+
+  if (avatarFile && avatarFile.size > 0) {
+    const ext = avatarFile.name.split(".").pop() ?? "jpg";
+    const key = `avatars/${userId}.${ext}`;
+    await c.env.AVATARS_BUCKET.put(key, avatarFile.stream(), {
+      httpMetadata: { contentType: avatarFile.type },
+    });
+    avatarUrl = key;
+  }
+
+  const now = new Date().toISOString();
+  const nowEpoch = Math.floor(Date.now() / 1000);
+
+  const invitedUser = {
+    id: userId,
+    phone,
+    name: name.trim(),
+    level: Level.Normal,
+    status: Status.Invited,
+    created: nowEpoch,
+    avatar_url: avatarUrl,
+    created_at: now,
+    updated_at: now,
+  };
+
+  await db.create(invitedUser);
+
+  return c.json({ user: invitedUser, invited: true }, 201);
+});
+
+/** PUT /user/:id/level — promote / demote (Super only). */
+user.put("/:id/level", requireSuper, async (c) => {
+  const targetId = c.req.param("id");
+  const db = userQueries(c.env.DB);
+  const body = await c.req.json<UpdateLevelRequest>();
+
+  if (
+    body.level !== Level.Normal &&
+    body.level !== Level.System &&
+    body.level !== Level.Super
+  ) {
+    return c.json({ error: "validation", message: "Invalid level" }, 400);
+  }
+
+  const updated = await db.updateLevel(targetId, body.level);
+  if (!updated) {
+    return c.json({ error: "not_found", message: "User not found" }, 404);
+  }
+
+  return c.json({ user: updated });
+});
+
+/** PUT /user/:id/status — block / unblock / delete (Super only). */
+user.put("/:id/status", requireSuper, async (c) => {
+  const targetId = c.req.param("id");
+  const db = userQueries(c.env.DB);
+  const body = await c.req.json<UpdateStatusRequest>();
+
+  if (
+    body.status !== Status.Invited &&
+    body.status !== Status.Active &&
+    body.status !== Status.Suspended &&
+    body.status !== Status.Deleted
+  ) {
+    return c.json({ error: "validation", message: "Invalid status" }, 400);
+  }
+
+  const updated = await db.updateStatus(targetId, body.status);
+  if (!updated) {
+    return c.json({ error: "not_found", message: "User not found" }, 404);
+  }
+
+  return c.json({ user: updated });
+});
+
+/** POST /user/change-phone/request — send verification to new phone. */
 user.post("/change-phone/request", async (c) => {
   const { jwtPayload } = c.var;
   const body = await c.req.json<ChangePhoneRequest>();
@@ -122,7 +228,6 @@ user.post("/change-phone/request", async (c) => {
 
   const db = userQueries(c.env.DB);
 
-  // Check no other user has this phone
   const existing = await db.findByPhone(new_phone);
   if (existing && existing.id !== jwtPayload.sub) {
     return c.json(
@@ -158,10 +263,7 @@ user.post("/change-phone/request", async (c) => {
   });
 });
 
-/**
- * POST /user/change-phone/verify
- * Verifies the code and updates the phone number.
- */
+/** POST /user/change-phone/verify — verify and apply phone change. */
 user.post("/change-phone/verify", async (c) => {
   const { jwtPayload } = c.var;
   const body = await c.req.json<ChangePhoneVerifyRequest>();
@@ -175,12 +277,12 @@ user.post("/change-phone/verify", async (c) => {
   }
 
   const userId = jwtPayload.sub!;
-
   const verification = await getAndDeleteChangePhoneCode(
     c.env.VERIFICATION_KV,
     userId,
     new_phone,
   );
+
   if (!verification) {
     return c.json(
       { error: "invalid_code", message: "Code expired or not requested" },
@@ -197,7 +299,6 @@ user.post("/change-phone/verify", async (c) => {
 
   const db = userQueries(c.env.DB);
 
-  // Double-check the phone isn't taken (race condition guard)
   const existing = await db.findByPhone(new_phone);
   if (existing && existing.id !== userId) {
     return c.json(
@@ -214,26 +315,13 @@ user.post("/change-phone/verify", async (c) => {
     return c.json({ error: "not_found", message: "User not found" }, 404);
   }
 
-  // Issue a new JWT with the updated phone
-  const token = await createPermanentToken(c.env, updated.id, updated.phone);
-
+  const token = await createPermanentToken(
+    c.env,
+    updated.id,
+    updated.phone,
+    updated.level,
+  );
   return c.json({ token, user: updated });
-});
-
-/**
- * GET /user/:id
- * Returns a public profile for another user (excludes phone for privacy).
- */
-user.get("/:id", async (c) => {
-  const targetId = c.req.param("id");
-  const db = userQueries(c.env.DB);
-
-  const profile = await db.getPublicProfile(targetId);
-  if (!profile) {
-    return c.json({ error: "not_found", message: "User not found" }, 404);
-  }
-
-  return c.json({ user: profile });
 });
 
 export default user;

@@ -1,9 +1,27 @@
+// ── Level constants ─────────────────────────────────────────────
+export const Level = {
+  Normal: 0,
+  System: 1,
+  Super: 2,
+} as const;
+export type Level = (typeof Level)[keyof typeof Level];
+
+// ── Status constants ────────────────────────────────────────────
+export const Status = {
+  Invited: 0,
+  Active: 1,
+  Suspended: 2,
+  Deleted: 3,
+} as const;
+export type Status = (typeof Status)[keyof typeof Status];
+
+// ── User ────────────────────────────────────────────────────────
 export interface User {
   id: string;
   phone: string;
   name: string;
-  level: number;
-  status: number;
+  level: Level;
+  status: Status;
   created: number;
   avatar_url: string | null;
   created_at: string | null;
@@ -19,9 +37,10 @@ export interface VerificationCode {
 }
 
 export interface JwtPayload {
-  sub: string | null; // null for temp tokens
+  sub: string | null;
   phone: string;
   purpose?: "registration" | "auth";
+  level?: Level;
   iat: number;
   exp: number;
 }
@@ -38,6 +57,19 @@ export interface VerifyCodeRequest {
 export interface RegisterRequest {
   phone: string;
   name: string;
+}
+
+export interface InviteRequest {
+  phone: string;
+  name: string;
+}
+
+export interface UpdateLevelRequest {
+  level: Level;
+}
+
+export interface UpdateStatusRequest {
+  status: Status;
 }
 
 export interface UpdateProfileRequest {
